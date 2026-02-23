@@ -2,16 +2,23 @@
 from os import environ
 environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 
+import pygame
 import tkinter as tk
+
+from pathlib import Path
+from PIL import Image, ImageTk
 from tkinter import ttk
 from tkinter import messagebox
-import pygame
-from PIL import Image, ImageTk
+
+_current_file = Path(__file__).resolve()
+ROOT_DIR = _current_file.parent.parent
+ASSETS_DIR = ROOT_DIR / "assets"
 
 class PomodoroTomato:
     
     TITLE = 'TomatoPomodoro'
     VERSION = '3.0'
+    GEOMETRY = '400x300+500+200'
 
     TL_INSTR = 'Enter Pomodoro time details below:'
     BREAK_INSTR = 'Enter break period [minutes]'
@@ -19,9 +26,15 @@ class PomodoroTomato:
 
     NOTIF_TITLE = 'PAUSE WORK!'
     NOTIF_MESSAGE = 'Please have a break.'
-    NOTIF_IMAGE = 'breakMode.png'
+    # NOTIF_IMAGE = 'breakMode.png'
     WORK_STATUS = 'Working...'
     RUNNING_STATUS = 'Running...'
+
+    SOUND_PATH = ASSETS_DIR / 'to_be_continued.mp3'
+    BREAK_MODE_IMG_PATH = ASSETS_DIR / 'break_mode.png'
+    WORK_MODE_IMG_PATH = ASSETS_DIR / 'work_mode.png'
+    WORK_MODE_ICO_PATH = ASSETS_DIR / 'work_mode.ico'
+
 
     def __init__(self, root):
         '''
@@ -29,12 +42,12 @@ class PomodoroTomato:
         '''
         
         pygame.mixer.init()
-        pygame.mixer.music.load('toBeCont.mp3')
+        pygame.mixer.music.load(self.SOUND_PATH)
 
         self.root = root
-        self.root.iconbitmap('workMode.ico')
+        self.root.iconbitmap(self.WORK_MODE_ICO_PATH)
         self.root.title(f'{self.TITLE} v{self.VERSION}')
-        self.root.geometry('300x200+500+200')
+        self.root.geometry(self.GEOMETRY)
         self.root.resizable(False, False)
 
         self.TIME = 0
@@ -44,6 +57,7 @@ class PomodoroTomato:
 
         self.mainwindow()
         self.root.mainloop()
+
 
     def mainwindow(self):
         '''
@@ -97,6 +111,7 @@ class PomodoroTomato:
         self.current_time_label = ttk.Label(self.mainframe,text='')
         self.current_time_label.grid(column=1, row=9, columnspan=3, rowspan=1)
 
+
     def update_on_work_status(self):
 
         self.NOTIF_TITLE = 'PAUSE WORK!' if self.ON_WORK==True \
@@ -106,8 +121,8 @@ class PomodoroTomato:
             if self.ON_WORK==True else \
             f'Please work for {self.TIME} minute(s).'
         
-        self.NOTIF_IMAGE = 'breakMode.png' if self.ON_WORK==True \
-            else 'workMode.png'
+        self.NOTIF_IMAGE = self.BREAK_MODE_IMG_PATH if self.ON_WORK==True \
+            else self.WORK_MODE_IMG_PATH
         
         self.WORK_STATUS = 'Working...' if self.ON_WORK==True \
             else 'On a Break...'
@@ -115,17 +130,21 @@ class PomodoroTomato:
         self.RUNNING_STATUS = 'Running...' if self.IS_RUNNING==True \
             else 'Stopped!'
 
+
     def update_running_status(self):
         self.RUNNING_STATUS = 'Running...' if self.IS_RUNNING==True \
             else 'Stopped!' 
+        
         
     def playsound(self):
         '''Called whenever it is now break time or work time.'''
         pygame.mixer.music.play()
 
+
     def stopsound(self):
         '''Called when the timer_done_message_box is destroyed.'''
         pygame.mixer.music.stop()
+
 
     def update_display_status(self):
         self.session_label.config(text=f'Session No.: {self.SESSION_NO}')
@@ -133,6 +152,7 @@ class PomodoroTomato:
         self.work_status_label.config(text=f'{self.WORK_STATUS}')
         self.current_time_label.config(text=f'Remaining Time: {self.TIME} sec')
         self.root.update()
+
 
     def countdown(self):
         
@@ -151,6 +171,7 @@ class PomodoroTomato:
             self.TIME = 0
             self.update_display_status()
 
+
     def timer_done_message_box(self):
         '''
         Shows a notification window whether break time or work time is over.
@@ -163,7 +184,7 @@ class PomodoroTomato:
 
         top = tk.Toplevel(self.root)
         top.title(title)
-        top.iconbitmap('workMode.ico')
+        top.iconbitmap(self.WORK_MODE_ICO_PATH)
         
         # Makes the window pop to the topmost level
         top.attributes('-topmost', True)
@@ -194,10 +215,12 @@ class PomodoroTomato:
         self.switch_status()
         self.start()
 
+
     def switch_status(self):
         self.ON_WORK = not self.ON_WORK
         self.update_on_work_status()
         self.update_display_status()
+
 
     def start(self):
         try:
@@ -214,11 +237,13 @@ class PomodoroTomato:
         except ValueError:
             messagebox.showerror('ERROR', 'Missing or Incorrect values')
 
+
     def stop(self):
         self.IS_RUNNING = False
         self.SESSION_NO = 0
         self.update_running_status() 
         self.update_display_status()
+
 
 if __name__ == '__main__':
     root = tk.Tk()
