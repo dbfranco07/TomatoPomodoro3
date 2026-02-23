@@ -1,2 +1,6 @@
 .venv/
-archives/
+.claude/
+.DS_Store
+*.pyc
+*/__pycache__/
+template/layout.png

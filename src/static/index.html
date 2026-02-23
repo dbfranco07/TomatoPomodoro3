@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TomatoPomodoro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; }
+    #timer-display { font-variant-numeric: tabular-nums; letter-spacing: 0.05em; }
+    .task-item { cursor: grab; }
+    .task-item:active { cursor: grabbing; }
+    .sortable-ghost { opacity: 0.4; background: #fca5a5; }
+    .sortable-drag { background: #fff7ed; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    #modal-overlay { display: none; }
+    #modal-overlay.active { display: flex; }
+    input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  </style>
+</head>
+<body class="bg-stone-100 min-h-screen p-6">
+
+  <!-- Page title -->
+  <h1 class="text-3xl font-bold text-red-600 mb-6 text-center tracking-wide">🍅 TomatoPomodoro</h1>
+
+  <!-- Top: Input Section -->
+  <div class="bg-white rounded-2xl shadow p-5 mb-6 flex flex-wrap items-end gap-4">
+    <div class="flex flex-col gap-1">
+      <label class="text-sm font-medium text-stone-500">Work time (min)</label>
+      <input id="input-work" type="number" min="0.1" step="0.1" placeholder="e.g. 25"
+        class="border border-stone-300 rounded-lg px-3 py-2 w-32 text-stone-800 focus:outline-none focus:ring-2 focus:ring-red-400" />
+    </div>
+    <div class="flex flex-col gap-1">
+      <label class="text-sm font-medium text-stone-500">Break time (min)</label>
+      <input id="input-break" type="number" min="0.1" step="0.1" placeholder="e.g. 5"
+        class="border border-stone-300 rounded-lg px-3 py-2 w-32 text-stone-800 focus:outline-none focus:ring-2 focus:ring-red-400" />
+    </div>
+    <div class="flex gap-3 ml-auto">
+      <button id="btn-start" onclick="startSession()"
+        class="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-semibold px-5 py-2 rounded-lg transition">
+        Start Session
+      </button>
+      <button id="btn-stop" onclick="stopSession()"
+        class="bg-stone-200 hover:bg-stone-300 active:bg-stone-400 text-stone-700 font-semibold px-5 py-2 rounded-lg transition">
+        Stop Session
+      </button>
+    </div>
+  </div>
+
+  <!-- Bottom: Timer + Todo -->
+  <div class="flex flex-col md:flex-row gap-6">
+
+    <!-- Timer Panel -->
+    <div class="bg-white rounded-2xl shadow p-6 flex flex-col items-center justify-center gap-4 min-w-[260px] flex-1">
+      <div id="status-badge"
+        class="text-sm font-semibold uppercase tracking-widest px-4 py-1 rounded-full bg-red-100 text-red-600">
+        Stopped
+      </div>
+      <div id="timer-display" class="text-7xl font-bold text-stone-800 mt-2">
+        --:--
+      </div>
+      <div id="session-display" class="text-stone-500 text-base mt-1">
+        Session No.: 0
+      </div>
+    </div>
+
+    <!-- Todo Panel -->
+    <div class="bg-white rounded-2xl shadow p-6 flex flex-col flex-1 min-w-[280px]">
+      <h2 class="text-lg font-bold text-stone-700 mb-4">To-Do Tasks</h2>
+
+      <!-- Task list -->
+      <ul id="task-list" class="flex flex-col gap-2 mb-4 min-h-[40px]">
+        <!-- Tasks injected by JS -->
+      </ul>
+
+      <!-- Add task -->
+      <div class="flex gap-2 mt-auto">
+        <input id="new-task-input" type="text" placeholder="Add a new task..."
+          class="border border-stone-300 rounded-lg px-3 py-2 flex-1 text-stone-800 focus:outline-none focus:ring-2 focus:ring-red-400"
+          onkeydown="if(event.key==='Enter') addTask()" />
+        <button onclick="addTask()"
+          class="bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-lg transition">
+          +
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Phase-end modal -->
+  <div id="modal-overlay"
+    class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full mx-4 text-center">
+      <div id="modal-title" class="text-2xl font-bold text-red-600 mb-2"></div>
+      <div id="modal-message" class="text-stone-600 text-base mb-6"></div>
+      <button onclick="dismissModal()"
+        class="bg-red-500 hover:bg-red-600 text-white font-semibold px-8 py-2 rounded-lg transition">
+        OK
+      </button>
+    </div>
+  </div>
+
+  <!-- Audio -->
+  <audio id="notif-sound" src="/assets/to_be_continued.mp3" preload="auto"></audio>
+
+  <script>
+    // ── Timer state ────────────────────────────────────────────────────────────
+    let workSec = 0;
+    let breakSec = 0;
+    let timeLeft = 0;
+    let isWork = true;
+    let isRunning = false;
+    let sessionNo = 0;
+    let timerInterval = null;
+
+    const sound = document.getElementById('notif-sound');
+    const timerDisplay = document.getElementById('timer-display');
+    const statusBadge = document.getElementById('status-badge');
+    const sessionDisplay = document.getElementById('session-display');
+    const modal = document.getElementById('modal-overlay');
+    const modalTitle = document.getElementById('modal-title');
+    const modalMessage = document.getElementById('modal-message');
+
+    function fmtTime(sec) {
+      const m = Math.floor(sec / 60).toString().padStart(2, '0');
+      const s = (sec % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function updateDisplay() {
+      timerDisplay.textContent = timeLeft >= 0 ? fmtTime(timeLeft) : '--:--';
+      sessionDisplay.textContent = `Session No.: ${sessionNo}`;
+    }
+
+    function setStatusBadge(text, color) {
+      statusBadge.textContent = text;
+      statusBadge.className = `text-sm font-semibold uppercase tracking-widest px-4 py-1 rounded-full ${color}`;
+    }
+
+    function startSession() {
+      const wInput = parseFloat(document.getElementById('input-work').value);
+      const bInput = parseFloat(document.getElementById('input-break').value);
+
+      if (isNaN(wInput) || isNaN(bInput) || wInput <= 0 || bInput <= 0) {
+        alert('Please enter valid work and break times (minutes > 0).');
+        return;
+      }
+
+      workSec = Math.round(wInput * 60);
+      breakSec = Math.round(bInput * 60);
+      isWork = true;
+      sessionNo = 0;
+      timeLeft = workSec;
+      isRunning = true;
+
+      setStatusBadge('Working...', 'bg-red-100 text-red-600');
+      updateDisplay();
+      clearInterval(timerInterval);
+      timerInterval = setInterval(tick, 1000);
+    }
+
+    function stopSession() {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      isRunning = false;
+      isWork = true;
+      sessionNo = 0;
+      timeLeft = 0;
+      setStatusBadge('Stopped', 'bg-stone-100 text-stone-500');
+      timerDisplay.textContent = '--:--';
+      sessionDisplay.textContent = 'Session No.: 0';
+      sound.pause();
+      sound.currentTime = 0;
+      modal.classList.remove('active');
+    }
+
+    function tick() {
+      if (!isRunning) return;
+      timeLeft--;
+      updateDisplay();
+      if (timeLeft <= 0) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        phaseComplete();
+      }
+    }
+
+    function phaseComplete() {
+      sound.currentTime = 0;
+      sound.play().catch(() => {});
+
+      if (isWork) {
+        sessionNo++;
+        updateDisplay();
+        modalTitle.textContent = 'Pause Work!';
+        modalMessage.textContent = `Work session #${sessionNo} complete! Time for a ${fmtTime(breakSec)} break.`;
+      } else {
+        modalTitle.textContent = 'Resume Work!';
+        modalMessage.textContent = `Break over! Start your next work session (${fmtTime(workSec)}).`;
+      }
+
+      modal.classList.add('active');
+    }
+
+    function dismissModal() {
+      sound.pause();
+      sound.currentTime = 0;
+      modal.classList.remove('active');
+
+      // Switch phase
+      isWork = !isWork;
+      timeLeft = isWork ? workSec : breakSec;
+
+      if (isWork) {
+        setStatusBadge('Working...', 'bg-red-100 text-red-600');
+      } else {
+        setStatusBadge('On a Break...', 'bg-green-100 text-green-600');
+      }
+
+      updateDisplay();
+      isRunning = true;
+      timerInterval = setInterval(tick, 1000);
+    }
+
+
+    // ── Todo list ──────────────────────────────────────────────────────────────
+    const taskList = document.getElementById('task-list');
+
+    async function fetchTasks() {
+      const res = await fetch('/tasks');
+      const tasks = await res.json();
+      renderTasks(tasks);
+    }
+
+    function renderTasks(tasks) {
+      taskList.innerHTML = '';
+      tasks.forEach(t => taskList.appendChild(buildTaskEl(t)));
+    }
+
+    function buildTaskEl(task) {
+      const li = document.createElement('li');
+      li.dataset.id = task.id;
+      li.className = 'task-item flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 select-none';
+
+      // Drag handle
+      const handle = document.createElement('span');
+      handle.className = 'text-stone-300 cursor-grab text-lg leading-none pr-1';
+      handle.innerHTML = '&#x2261;';
+      li.appendChild(handle);
+
+      // Checkbox
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = task.checked;
+      cb.className = 'w-4 h-4 accent-red-500 cursor-pointer shrink-0';
+      cb.onchange = () => toggleTask(task.id, cb.checked, textSpan);
+      li.appendChild(cb);
+
+      // Text
+      const textSpan = document.createElement('span');
+      textSpan.textContent = task.text;
+      textSpan.className = 'flex-1 text-stone-700 text-sm' + (task.checked ? ' line-through text-stone-400' : '');
+      li.appendChild(textSpan);
+
+      // Delete button
+      const del = document.createElement('button');
+      del.innerHTML = '&times;';
+      del.className = 'text-stone-300 hover:text-red-500 font-bold text-lg leading-none transition ml-1';
+      del.onclick = () => deleteTask(task.id);
+      li.appendChild(del);
+
+      return li;
+    }
+
+    async function addTask() {
+      const input = document.getElementById('new-task-input');
+      const text = input.value.trim();
+      if (!text) return;
+      const res = await fetch('/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      const task = await res.json();
+      taskList.appendChild(buildTaskEl(task));
+      input.value = '';
+    }
+
+    async function toggleTask(id, checked, textSpan) {
+      await fetch(`/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ checked })
+      });
+      if (checked) {
+        textSpan.classList.add('line-through', 'text-stone-400');
+        textSpan.classList.remove('text-stone-700');
+      } else {
+        textSpan.classList.remove('line-through', 'text-stone-400');
+        textSpan.classList.add('text-stone-700');
+      }
+    }
+
+    async function deleteTask(id) {
+      await fetch(`/tasks/${id}`, { method: 'DELETE' });
+      const el = taskList.querySelector(`[data-id="${id}"]`);
+      if (el) el.remove();
+    }
+
+    // Drag-and-drop via Sortable.js
+    Sortable.create(taskList, {
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      dragClass: 'sortable-drag',
+      onEnd: async () => {
+        const ids = [...taskList.querySelectorAll('[data-id]')].map(el => el.dataset.id);
+        await fetch('/tasks/reorder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids })
+        });
+      }
+    });
+
+    // Init
+    fetchTasks();
+  </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+[
+  {
+    "id": "c7c2bc9c-c172-4dfd-951e-3e716dad9bed",
+    "text": "read about more pdf",
+    "checked": false
+  },
+  {
+    "id": "e1b53e64-1523-4937-a686-0f3876eef31e",
+    "text": "testing",
+    "checked": true
+  },
+  {
+    "id": "e198fb56-c218-4241-9772-0c019050bc7c",
+    "text": "Read about python",
+    "checked": false
+  },
+  {
+    "id": "6f3441e7-2db4-4404-ac67-b64083e90125",
+    "text": "learn about ycombinator",
+    "checked": false
+  }
+]
