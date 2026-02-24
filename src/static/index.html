@@ -87,6 +87,16 @@
 
   </div>
 
+  <!-- Notes Panel -->
+  <div class="bg-white rounded-2xl shadow p-6 mt-6">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-lg font-bold text-stone-700">Notes</h2>
+      <span id="notes-status" class="text-xs text-stone-400"></span>
+    </div>
+    <textarea id="notes-area" placeholder="Type your notes here..."
+      class="w-full h-40 resize-y border border-stone-200 rounded-lg px-3 py-2 text-stone-700 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"></textarea>
+  </div>
+
   <!-- Phase-end modal -->
   <div id="modal-overlay"
     class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -322,8 +332,37 @@
       }
     });
 
+    // ── Notes ─────────────────────────────────────────────────────────────────
+    const notesArea = document.getElementById('notes-area');
+    const notesStatus = document.getElementById('notes-status');
+    let notesSaveTimer = null;
+
+    async function fetchNotes() {
+      const res = await fetch('/notes');
+      const data = await res.json();
+      notesArea.value = data.content;
+    }
+
+    async function saveNotes() {
+      notesStatus.textContent = 'Saving…';
+      await fetch('/notes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: notesArea.value })
+      });
+      notesStatus.textContent = 'Saved';
+      setTimeout(() => { notesStatus.textContent = ''; }, 2000);
+    }
+
+    notesArea.addEventListener('input', () => {
+      clearTimeout(notesSaveTimer);
+      notesStatus.textContent = '';
+      notesSaveTimer = setTimeout(saveNotes, 800);
+    });
+
     // Init
     fetchTasks();
+    fetchNotes();
   </script>
 </body>
 </html>

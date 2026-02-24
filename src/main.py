@@ -7,13 +7,15 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+import uvicorn
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent.parent
 SRC_DIR = Path(__file__).resolve().parent
-STATIC_DIR = SRC_DIR / "static"
 ASSETS_DIR = BASE_DIR / "assets"
+STATIC_DIR = SRC_DIR / "static"
 TASKS_FILE = SRC_DIR / "tasks.json"
+NOTES_FILE = SRC_DIR / "notes.txt"
 
 
 def load_tasks() -> List[dict]:
@@ -27,7 +29,6 @@ def save_tasks(tasks: List[dict]) -> None:
 
 
 app = FastAPI(title="TomatoPomodoro")
-
 app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
@@ -102,3 +103,27 @@ def delete_task(task_id: str):
     if len(new_tasks) == len(tasks):
         raise HTTPException(status_code=404, detail="Task not found")
     save_tasks(new_tasks)
+
+
+# --- Notes model ---
+
+class NotesBody(BaseModel):
+    content: str
+
+
+# --- Notes endpoints ---
+
+@app.get("/notes")
+def get_notes():
+    content = NOTES_FILE.read_text(encoding="utf-8") if NOTES_FILE.exists() else ""
+    return {"content": content}
+
+
+@app.put("/notes")
+def save_notes(body: NotesBody):
+    NOTES_FILE.write_text(body.content, encoding="utf-8")
+    return {"ok": True}
+
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
