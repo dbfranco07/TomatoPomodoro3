@@ -3,6 +3,8 @@ import uuid
 from pathlib import Path
 from typing import List
 
+import anthropic
+import openai
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -62,7 +64,9 @@ def get_tasks():
 @app.post("/tasks", status_code=201)
 def create_task(body: TaskCreate):
     tasks = load_tasks()
-    task = {"id": str(uuid.uuid4()), "text": body.text.strip(), "checked": False}
+    task = {"id": str(uuid.uuid4()), 
+            "text": body.text.strip(), 
+            "checked": False}
     tasks.append(task)
     save_tasks(tasks)
     return task
@@ -123,6 +127,64 @@ def get_notes():
 def save_notes(body: NotesBody):
     NOTES_FILE.write_text(body.content, encoding="utf-8")
     return {"ok": True}
+
+
+# --- AI Assistant ---
+
+SYSTEM_PROMPTS = {
+    "summarize": "Summarize the following notes or bullet points concisely. Output only the summary.",
+    "cleanup":   "Clean up and rewrite the following text. Fix grammar, improve clarity, preserve meaning. Output only the rewritten text.",
+    "expand":    "Expand the following rough idea or bullet points into a more complete, coherent thought. Output only the expanded text.",
+}
+
+
+class AIRequest(BaseModel):
+    provider: str      # "anthropic" | "openai_compat"
+    model: str
+    api_key: str
+    base_url: str      # e.g. "http://localhost:11434/v1" for Ollama; "" for OpenAI
+    action: str        # "summarize" | "cleanup" | "expand" | "custom"
+    custom_prompt: str
+    content: str
+
+
+@app.post("/ai/generate")
+def ai_generate(body: AIRequest):
+    user_msg = body.content.strip()
+    if not user_msg:
+        raise HTTPException(status_code=400, detail="Content is empty")
+
+    system = body.custom_prompt.strip() if body.action == "custom" else SYSTEM_PROMPTS.get(body.action, "")
+    if not system:
+        raise HTTPException(status_code=400, detail=f"Unknown action: {body.action}")
+
+    try:
+        if body.provider == "anthropic":
+            client = anthropic.Anthropic(api_key=body.api_key)
+            msg = client.messages.create(
+                model=body.model,
+                max_tokens=1024,
+                system=system,
+                messages=[{"role": "user", "content": user_msg}],
+            )
+            return {"result": msg.content[0].text}
+        else:
+            # OpenAI-compatible: OpenAI, Ollama, vLLM, etc.
+            kwargs: dict = {"api_key": body.api_key or "ollama"}
+            if body.base_url:
+                kwargs["base_url"] = body.base_url
+            client = openai.OpenAI(**kwargs)
+            resp = client.chat.completions.create(
+                model=body.model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user_msg},
+                ],
+                max_tokens=1024,
+            )
+            return {"result": resp.choices[0].message.content}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 if __name__ == "__main__":

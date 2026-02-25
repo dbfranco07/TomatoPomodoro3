@@ -97,6 +97,104 @@
       class="w-full h-40 resize-y border border-stone-200 rounded-lg px-3 py-2 text-stone-700 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"></textarea>
   </div>
 
+  <!-- AI Assistant Panel -->
+  <div class="bg-white rounded-2xl shadow p-6 mt-6">
+
+    <!-- Header row -->
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold text-stone-700">AI Assistant</h2>
+      <button onclick="toggleAISettings()"
+        class="text-stone-400 hover:text-red-500 transition text-xl leading-none" title="Settings">&#9881;</button>
+    </div>
+
+    <!-- Settings drawer (hidden by default) -->
+    <div id="ai-settings" class="hidden mb-4 p-4 bg-stone-50 border border-stone-200 rounded-xl flex flex-col gap-3">
+      <div class="flex flex-wrap gap-4">
+        <div class="flex flex-col gap-1 flex-1 min-w-[140px]">
+          <label class="text-xs font-medium text-stone-500">Provider</label>
+          <select id="ai-provider" onchange="onProviderChange()"
+            class="border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-red-400">
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="openai_compat">OpenAI / Ollama / vLLM</option>
+          </select>
+        </div>
+        <div class="flex flex-col gap-1 flex-1 min-w-[140px]">
+          <label class="text-xs font-medium text-stone-500">Model</label>
+          <input id="ai-model" type="text" placeholder="e.g. claude-haiku-4-5-20251001"
+            class="border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-red-400" />
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-4">
+        <div class="flex flex-col gap-1 flex-1 min-w-[140px]">
+          <label class="text-xs font-medium text-stone-500">API Key</label>
+          <input id="ai-api-key" type="password" placeholder="sk-..."
+            class="border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-red-400" />
+        </div>
+        <div id="ai-base-url-wrap" class="flex flex-col gap-1 flex-1 min-w-[140px] hidden">
+          <label class="text-xs font-medium text-stone-500">Base URL</label>
+          <input id="ai-base-url" type="text" placeholder="http://localhost:11434/v1"
+            class="border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-red-400" />
+        </div>
+      </div>
+      <button onclick="saveAISettings()"
+        class="self-start bg-red-500 hover:bg-red-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
+        Save to browser
+      </button>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="flex flex-wrap gap-2 mb-3">
+      <button onclick="setAction('summarize')" id="btn-action-summarize"
+        class="action-btn bg-red-500 text-white text-sm font-medium px-4 py-1.5 rounded-full transition">
+        Summarize
+      </button>
+      <button onclick="setAction('cleanup')" id="btn-action-cleanup"
+        class="action-btn bg-stone-100 text-stone-600 text-sm font-medium px-4 py-1.5 rounded-full transition hover:bg-stone-200">
+        Clean up
+      </button>
+      <button onclick="setAction('expand')" id="btn-action-expand"
+        class="action-btn bg-stone-100 text-stone-600 text-sm font-medium px-4 py-1.5 rounded-full transition hover:bg-stone-200">
+        Expand
+      </button>
+      <button onclick="setAction('custom')" id="btn-action-custom"
+        class="action-btn bg-stone-100 text-stone-600 text-sm font-medium px-4 py-1.5 rounded-full transition hover:bg-stone-200">
+        Custom
+      </button>
+    </div>
+
+    <!-- Custom prompt input (shown only for Custom action) -->
+    <div id="custom-prompt-wrap" class="hidden mb-3">
+      <input id="ai-custom-prompt" type="text" placeholder="e.g. Rewrite this as an email to my team..."
+        class="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-red-400" />
+    </div>
+
+    <!-- Side-by-side input / output -->
+    <div class="flex flex-col md:flex-row gap-4 mb-4">
+      <div class="flex flex-col flex-1 gap-1">
+        <label class="text-xs font-medium text-stone-400 uppercase tracking-wide">Your input</label>
+        <textarea id="ai-input" placeholder="Paste your notes, bullet points, or ideas here..."
+          class="w-full h-40 resize-y border border-stone-200 rounded-lg px-3 py-2 text-stone-700 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"></textarea>
+      </div>
+      <div class="flex flex-col flex-1 gap-1">
+        <label class="text-xs font-medium text-stone-400 uppercase tracking-wide">Output</label>
+        <div id="ai-output"
+          class="w-full h-40 overflow-y-auto border border-stone-200 rounded-lg px-3 py-2 text-stone-700 text-sm bg-stone-50 whitespace-pre-wrap">
+        </div>
+      </div>
+    </div>
+
+    <!-- Generate button + status -->
+    <div class="flex items-center gap-4">
+      <button onclick="runAI()" id="btn-generate"
+        class="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-semibold px-6 py-2 rounded-lg transition flex items-center gap-2">
+        <span>Generate</span>
+        <span id="ai-spinner" class="hidden animate-spin">&#8635;</span>
+      </button>
+      <span id="ai-status" class="text-sm text-stone-400"></span>
+    </div>
+
+  </div>
+
   <!-- Phase-end modal -->
   <div id="modal-overlay"
     class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -360,9 +458,106 @@
       notesSaveTimer = setTimeout(saveNotes, 800);
     });
 
+    // ── AI Assistant ───────────────────────────────────────────────────────────
+    let currentAction = 'summarize';
+
+    function setAction(action) {
+      currentAction = action;
+      document.querySelectorAll('.action-btn').forEach(btn => {
+        btn.classList.remove('bg-red-500', 'text-white');
+        btn.classList.add('bg-stone-100', 'text-stone-600');
+      });
+      const active = document.getElementById(`btn-action-${action}`);
+      active.classList.remove('bg-stone-100', 'text-stone-600');
+      active.classList.add('bg-red-500', 'text-white');
+      document.getElementById('custom-prompt-wrap').classList.toggle('hidden', action !== 'custom');
+    }
+
+    function toggleAISettings() {
+      document.getElementById('ai-settings').classList.toggle('hidden');
+    }
+
+    function onProviderChange() {
+      const isCompat = document.getElementById('ai-provider').value === 'openai_compat';
+      document.getElementById('ai-base-url-wrap').classList.toggle('hidden', !isCompat);
+    }
+
+    function loadAISettings() {
+      const s = JSON.parse(localStorage.getItem('ai_settings') || '{}');
+      if (s.provider) document.getElementById('ai-provider').value = s.provider;
+      if (s.model)    document.getElementById('ai-model').value    = s.model;
+      if (s.api_key)  document.getElementById('ai-api-key').value  = s.api_key;
+      if (s.base_url) document.getElementById('ai-base-url').value = s.base_url;
+      onProviderChange();
+    }
+
+    function saveAISettings() {
+      const s = {
+        provider: document.getElementById('ai-provider').value,
+        model:    document.getElementById('ai-model').value.trim(),
+        api_key:  document.getElementById('ai-api-key').value.trim(),
+        base_url: document.getElementById('ai-base-url').value.trim(),
+      };
+      localStorage.setItem('ai_settings', JSON.stringify(s));
+      document.getElementById('ai-settings').classList.add('hidden');
+    }
+
+    async function runAI() {
+      const content = document.getElementById('ai-input').value.trim();
+      const output  = document.getElementById('ai-output');
+      const status  = document.getElementById('ai-status');
+      const spinner = document.getElementById('ai-spinner');
+      const btn     = document.getElementById('btn-generate');
+
+      if (!content) {
+        output.textContent = '';
+        status.textContent = 'Input is empty.';
+        return;
+      }
+
+      const s = JSON.parse(localStorage.getItem('ai_settings') || '{}');
+      if (!s.model) {
+        status.textContent = 'Open ⚙ Settings and set a model first.';
+        return;
+      }
+
+      btn.disabled = true;
+      spinner.classList.remove('hidden');
+      output.textContent = '';
+      status.textContent = '';
+
+      try {
+        const res = await fetch('/ai/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider:      s.provider || 'anthropic',
+            model:         s.model,
+            api_key:       s.api_key || '',
+            base_url:      s.base_url || '',
+            action:        currentAction,
+            custom_prompt: document.getElementById('ai-custom-prompt').value.trim(),
+            content,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          status.textContent = `Error: ${data.detail || res.statusText}`;
+        } else {
+          output.textContent = data.result;
+        }
+      } catch (err) {
+        status.textContent = `Network error: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+        spinner.classList.add('hidden');
+      }
+    }
+
     // Init
     fetchTasks();
     fetchNotes();
+    loadAISettings();
   </script>
 </body>
 </html>
