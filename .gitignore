@@ -4,6 +4,8 @@
 *.pyc
 */__pycache__/
 
+.archives
+
 template/layout.png
 src/tasks.json
 src/notes.txt
