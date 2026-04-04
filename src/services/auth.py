@@ -1,6 +1,8 @@
 import secrets
+
 import bcrypt
 from fastapi import HTTPException, Request
+
 from services.database import get_db
 
 
@@ -21,12 +23,11 @@ async def get_current_user(request: Request) -> dict:
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    db = get_db()
-    cursor = await db.execute(
-        "SELECT u.id, u.username FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.token = ?",
-        (token,),
+    pool = get_db()
+    row = await pool.fetchrow(
+        "SELECT u.id, u.username FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.token = $1",
+        token,
     )
-    row = await cursor.fetchone()
     if not row:
         raise HTTPException(status_code=401, detail="Invalid session")
 

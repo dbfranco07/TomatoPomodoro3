@@ -13,83 +13,84 @@ STATIC_DIR = SRC_DIR / "static"
 # ── Tasks ──────────────────────────────────────────────────────────────────
 
 async def load_tasks(user_id: str) -> List[dict]:
-    db = get_db()
-    cursor = await db.execute(
-        "SELECT id, text, checked, position FROM tasks WHERE user_id = ? ORDER BY position",
-        (user_id,),
+    """Load all tasks for a user, ordered by position."""
+    pool = get_db()
+    rows = await pool.fetch(
+        "SELECT id, text, checked, position FROM tasks WHERE user_id = $1 ORDER BY position",
+        user_id,
     )
-    rows = await cursor.fetchall()
-    return [{"id": r["id"], "text": r["text"], "checked": bool(r["checked"])} for r in rows]
+    return [{"id": r["id"], "text": r["text"], "checked": r["checked"]} for r in rows]
 
 
 async def save_task(user_id: str, task_id: str, text: str) -> dict:
-    db = get_db()
-    # Set position to max+1 for this user
-    cursor = await db.execute(
-        "SELECT COALESCE(MAX(position), -1) + 1 AS next_pos FROM tasks WHERE user_id = ?",
-        (user_id,),
+    """Create a new task and return it."""
+    pool = get_db()
+    row = await pool.fetchrow(
+        "SELECT COALESCE(MAX(position), -1) + 1 AS next_pos FROM tasks WHERE user_id = $1",
+        user_id,
     )
-    row = await cursor.fetchone()
     position = row["next_pos"]
 
-    await db.execute(
-        "INSERT INTO tasks (id, user_id, text, checked, position) VALUES (?, ?, ?, 0, ?)",
-        (task_id, user_id, text, position),
+    await pool.execute(
+        "INSERT INTO tasks (id, user_id, text, checked, position) VALUES ($1, $2, $3, FALSE, $4)",
+        task_id, user_id, text, position,
     )
-    await db.commit()
     return {"id": task_id, "text": text, "checked": False}
 
 
 async def update_task(task_id: str, user_id: str, checked: bool) -> dict | None:
-    db = get_db()
-    cursor = await db.execute(
-        "UPDATE tasks SET checked = ? WHERE id = ? AND user_id = ? RETURNING id, text, checked",
-        (int(checked), task_id, user_id),
+    """Toggle a task's checked state and return the updated task."""
+    pool = get_db()
+    row = await pool.fetchrow(
+        "UPDATE tasks SET checked = $1 WHERE id = $2 AND user_id = $3 RETURNING id, text, checked",
+        checked, task_id, user_id,
     )
-    row = await cursor.fetchone()
-    await db.commit()
     if not row:
         return None
-    return {"id": row["id"], "text": row["text"], "checked": bool(row["checked"])}
+    return {"id": row["id"], "text": row["text"], "checked": row["checked"]}
 
 
 async def delete_task(task_id: str, user_id: str) -> bool:
-    db = get_db()
-    cursor = await db.execute(
-        "DELETE FROM tasks WHERE id = ? AND user_id = ?",
-        (task_id, user_id),
+    """Delete a task. Returns True if a row was deleted."""
+    pool = get_db()
+    result = await pool.execute(
+        "DELETE FROM tasks WHERE id = $1 AND user_id = $2",
+        task_id, user_id,
     )
-    await db.commit()
-    return cursor.rowcount > 0
+    # asyncpg returns e.g. "DELETE 1" or "DELETE 0"
+    return result.split()[-1] != "0"
 
 
 async def reorder_tasks(user_id: str, ids: List[str]) -> List[dict]:
-    db = get_db()
-    for position, task_id in enumerate(ids):
-        await db.execute(
-            "UPDATE tasks SET position = ? WHERE id = ? AND user_id = ?",
-            (position, task_id, user_id),
-        )
-    await db.commit()
+    """Reorder tasks by updating positions, then return the full list."""
+    pool = get_db()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            for position, task_id in enumerate(ids):
+                await conn.execute(
+                    "UPDATE tasks SET position = $1 WHERE id = $2 AND user_id = $3",
+                    position, task_id, user_id,
+                )
     return await load_tasks(user_id)
 
 
 # ── Notes ──────────────────────────────────────────────────────────────────
 
 async def load_notes(user_id: str) -> str:
-    db = get_db()
-    cursor = await db.execute(
-        "SELECT content FROM notes WHERE user_id = ?",
-        (user_id,),
+    """Load notes for a user."""
+    pool = get_db()
+    row = await pool.fetchrow(
+        "SELECT content FROM notes WHERE user_id = $1",
+        user_id,
     )
-    row = await cursor.fetchone()
     return row["content"] if row else ""
 
 
 async def save_notes(user_id: str, content: str) -> None:
-    db = get_db()
-    await db.execute(
-        "INSERT OR REPLACE INTO notes (user_id, content) VALUES (?, ?)",
-        (user_id, content),
+    """Upsert notes for a user."""
+    pool = get_db()
+    await pool.execute(
+        "INSERT INTO notes (user_id, content) VALUES ($1, $2) "
+        "ON CONFLICT (user_id) DO UPDATE SET content = $2",
+        user_id, content,
     )
-    await db.commit()
