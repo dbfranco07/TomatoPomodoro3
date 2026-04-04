@@ -18,6 +18,18 @@ class NotesBody(BaseModel):
     content: str
 
 
+class NoteCreate(BaseModel):
+    title: str
+
+
+class NoteUpdate(BaseModel):
+    content: str
+
+
+class NoteRename(BaseModel):
+    title: str
+
+
 class UserCreate(BaseModel):
     username: str
     password: str
