@@ -13,8 +13,8 @@
     .task-item:active { cursor: grabbing; }
     .sortable-ghost { opacity: 0.4; background: #fca5a5; }
     .sortable-drag { background: #fff7ed; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-    #modal-overlay { display: none; }
-    #modal-overlay.active { display: flex; }
+    #modal-overlay { pointer-events: none; }
+    #modal-overlay.active { pointer-events: auto; }
     input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
 
     /* Progress ring */
@@ -34,6 +34,41 @@
       50% { opacity: 0.5; }
     }
     .timer-urgent { animation: timer-pulse 1s ease-in-out infinite; }
+
+    /* Task item animations */
+    @keyframes task-slide-in {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes task-slide-out {
+      from { opacity: 1; transform: translateX(0); max-height: 60px; }
+      to { opacity: 0; transform: translateX(30px); max-height: 0; padding: 0; margin: 0; border-width: 0; }
+    }
+    .task-enter { animation: task-slide-in 0.25s ease-out; }
+    .task-exit { animation: task-slide-out 0.3s ease-in forwards; pointer-events: none; }
+
+    /* Status badge smooth transition */
+    #status-badge { transition: background-color 0.4s ease, color 0.4s ease; }
+
+    /* Modal entrance animation */
+    #modal-overlay { opacity: 0; transition: opacity 0.2s ease; }
+    #modal-overlay.active { opacity: 1; }
+    #modal-overlay .modal-content {
+      transform: scale(0.9); opacity: 0;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+    #modal-overlay.active .modal-content {
+      transform: scale(1); opacity: 1;
+    }
+
+    /* Note editor fade */
+    #note-editor { transition: opacity 0.2s ease; }
+
+    /* Collapsible panels */
+    .panel-body { overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease; }
+    .panel-body.collapsed { max-height: 0 !important; opacity: 0; margin: 0; padding-top: 0; padding-bottom: 0; }
+    .panel-chevron { transition: transform 0.3s ease; display: inline-block; }
+    .panel-chevron.collapsed { transform: rotate(-90deg); }
   </style>
 </head>
 <body class="bg-stone-100 min-h-screen p-6">
@@ -167,11 +202,15 @@
 
     <!-- Notes Panel -->
     <div class="bg-white rounded-2xl shadow p-6 mt-6">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-bold text-stone-700">Notes</h2>
+      <div class="flex items-center justify-between cursor-pointer select-none" onclick="togglePanel('notes')">
+        <div class="flex items-center gap-2">
+          <span id="panel-chevron-notes" class="panel-chevron text-stone-400 text-sm">&#9660;</span>
+          <h2 class="text-lg font-bold text-stone-700">Notes</h2>
+        </div>
         <span id="notes-status" class="text-xs text-stone-400"></span>
       </div>
 
+      <div id="panel-body-notes" class="panel-body mt-4" style="max-height: 600px;">
       <div class="flex flex-col md:flex-row gap-4">
         <!-- Note list sidebar -->
         <div class="md:w-48 flex-shrink-0 flex flex-col">
@@ -219,18 +258,23 @@
           Select a note or create a new one
         </div>
       </div>
+      </div><!-- /panel-body-notes -->
     </div>
 
     <!-- AI Assistant Panel -->
     <div class="bg-white rounded-2xl shadow p-6 mt-6">
 
       <!-- Header row -->
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-bold text-stone-700">AI Assistant</h2>
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2 cursor-pointer select-none" onclick="togglePanel('ai')">
+          <span id="panel-chevron-ai" class="panel-chevron collapsed text-stone-400 text-sm">&#9660;</span>
+          <h2 class="text-lg font-bold text-stone-700">AI Assistant</h2>
+        </div>
         <button onclick="toggleAISettings()"
           class="text-stone-400 hover:text-red-500 transition text-xl leading-none" title="Settings">&#9881;</button>
       </div>
 
+      <div id="panel-body-ai" class="panel-body collapsed mt-4" style="max-height: 800px;">
       <!-- Settings drawer (hidden by default) -->
       <div id="ai-settings" class="hidden mb-4 p-4 bg-stone-50 border border-stone-200 rounded-xl flex flex-col gap-3">
         <div class="flex flex-wrap gap-4">
@@ -317,6 +361,7 @@
         <span id="ai-status" class="text-sm text-stone-400"></span>
       </div>
 
+      </div><!-- /panel-body-ai -->
     </div>
 
   </div><!-- /app-section -->
@@ -324,7 +369,7 @@
   <!-- Phase-end modal -->
   <div id="modal-overlay"
     class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full mx-4 text-center">
+    <div class="modal-content bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full mx-4 text-center">
       <div id="modal-title" class="text-2xl font-bold text-red-600 mb-2"></div>
       <div id="modal-message" class="text-stone-600 text-base mb-6"></div>
       <button onclick="dismissModal()"
@@ -337,6 +382,30 @@
   <!-- Audio -->
   <audio id="notif-sound" src="/assets/to_be_continued.mp3" preload="auto"></audio>
 
+  <script>
+    function togglePanel(name) {
+      const body = document.getElementById(`panel-body-${name}`);
+      const chevron = document.getElementById(`panel-chevron-${name}`);
+      const isCollapsed = body.classList.toggle('collapsed');
+      chevron.classList.toggle('collapsed', isCollapsed);
+      localStorage.setItem(`panel-${name}-collapsed`, isCollapsed ? '1' : '0');
+    }
+
+    function restorePanelStates() {
+      ['notes', 'ai'].forEach(name => {
+        const stored = localStorage.getItem(`panel-${name}-collapsed`);
+        const body = document.getElementById(`panel-body-${name}`);
+        const chevron = document.getElementById(`panel-chevron-${name}`);
+        if (!body || !chevron) return;
+
+        // AI defaults to collapsed, Notes defaults to open
+        const shouldCollapse = stored !== null ? stored === '1' : name === 'ai';
+        body.classList.toggle('collapsed', shouldCollapse);
+        chevron.classList.toggle('collapsed', shouldCollapse);
+      });
+    }
+    restorePanelStates();
+  </script>
   <script src="/static/js/timer.js"></script>
   <script src="/static/js/auth.js"></script>
   <script src="/static/js/tasks.js"></script>

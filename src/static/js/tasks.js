@@ -64,7 +64,9 @@ async function addTask() {
   });
   if (!res) return;
   const task = await res.json();
-  taskList.appendChild(buildTaskEl(task));
+  const el = buildTaskEl(task);
+  el.classList.add('task-enter');
+  taskList.appendChild(el);
   input.value = '';
 }
 
@@ -123,7 +125,10 @@ function showDeleteConfirm(wrap, delBtn, taskId) {
 async function deleteTask(id) {
   await apiFetch(`/tasks/${id}`, { method: 'DELETE' });
   const el = taskList.querySelector(`[data-id="${id}"]`);
-  if (el) el.remove();
+  if (el) {
+    el.classList.add('task-exit');
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+  }
 }
 
 function initTasks() {
