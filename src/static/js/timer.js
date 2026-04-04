@@ -20,6 +20,7 @@ const btnStart = document.getElementById('btn-start');
 const btnPause = document.getElementById('btn-pause');
 const timerPanel = document.getElementById('timer-panel');
 const progressRing = document.getElementById('progress-ring');
+const timerError = document.getElementById('timer-error');
 
 const RING_CIRCUMFERENCE = 2 * Math.PI * 115; // r=115
 
@@ -70,9 +71,11 @@ function startSession() {
   const bInput = parseFloat(document.getElementById('input-break').value);
 
   if (isNaN(wInput) || isNaN(bInput) || wInput <= 0 || bInput <= 0) {
-    alert('Please enter valid work and break times (minutes > 0).');
+    timerError.textContent = 'Enter valid work and break times (> 0 min)';
+    setTimeout(() => { timerError.textContent = ''; }, 3000);
     return;
   }
+  timerError.textContent = '';
 
   workSec = Math.round(wInput * 60);
   breakSec = Math.round(bInput * 60);

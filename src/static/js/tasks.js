@@ -38,12 +38,17 @@ function buildTaskEl(task) {
   textSpan.className = 'flex-1 text-stone-700 text-sm' + (task.checked ? ' line-through text-stone-400' : '');
   li.appendChild(textSpan);
 
-  // Delete button
+  // Delete button with inline confirmation
+  const delWrap = document.createElement('div');
+  delWrap.className = 'flex items-center gap-1 ml-1';
+
   const del = document.createElement('button');
   del.innerHTML = '&times;';
-  del.className = 'text-stone-300 hover:text-red-500 font-bold text-lg leading-none transition ml-1';
-  del.onclick = () => deleteTask(task.id);
-  li.appendChild(del);
+  del.className = 'text-stone-300 hover:text-red-500 font-bold text-lg leading-none transition';
+  del.onclick = () => showDeleteConfirm(delWrap, del, task.id);
+  delWrap.appendChild(del);
+
+  li.appendChild(delWrap);
 
   return li;
 }
@@ -76,6 +81,43 @@ async function toggleTask(id, checked, textSpan) {
     textSpan.classList.remove('line-through', 'text-stone-400');
     textSpan.classList.add('text-stone-700');
   }
+}
+
+function showDeleteConfirm(wrap, delBtn, taskId) {
+  // Already showing confirm? ignore
+  if (wrap.dataset.confirming) return;
+  wrap.dataset.confirming = 'true';
+
+  delBtn.classList.add('hidden');
+
+  const yes = document.createElement('button');
+  yes.textContent = 'Delete?';
+  yes.className = 'text-red-500 text-xs font-semibold hover:text-red-700 transition';
+  yes.onclick = (e) => { e.stopPropagation(); deleteTask(taskId); };
+
+  const no = document.createElement('button');
+  no.textContent = 'No';
+  no.className = 'text-stone-400 text-xs font-medium hover:text-stone-600 transition';
+  no.onclick = (e) => {
+    e.stopPropagation();
+    yes.remove();
+    no.remove();
+    delBtn.classList.remove('hidden');
+    delete wrap.dataset.confirming;
+  };
+
+  wrap.appendChild(yes);
+  wrap.appendChild(no);
+
+  // Auto-dismiss after 3 seconds
+  setTimeout(() => {
+    if (wrap.dataset.confirming) {
+      yes.remove();
+      no.remove();
+      delBtn.classList.remove('hidden');
+      delete wrap.dataset.confirming;
+    }
+  }, 3000);
 }
 
 async function deleteTask(id) {
