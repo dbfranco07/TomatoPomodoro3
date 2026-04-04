@@ -16,6 +16,7 @@ async def init_db() -> None:
         host=parsed.hostname,
         port=parsed.port or 5432,
         database=parsed.path.lstrip("/"),
+        statement_cache_size=0,
     )
 
 
