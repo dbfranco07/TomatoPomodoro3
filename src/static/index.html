@@ -180,10 +180,19 @@
           <div id="notes-list" class="flex flex-col gap-1 max-h-60 overflow-y-auto">
             <!-- Note items injected by JS -->
           </div>
-          <button onclick="promptCreateNote()"
+          <button id="new-note-btn" onclick="showNewNoteInput()"
             class="w-full mt-2 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition">
             + New Note
           </button>
+          <div id="new-note-input-wrap" class="hidden mt-2 flex gap-1">
+            <input id="new-note-input" type="text" placeholder="Note name..."
+              class="border border-stone-300 rounded-lg px-2 py-1.5 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-red-400 flex-1 min-w-0"
+              onkeydown="if(event.key==='Enter') submitNewNote(); if(event.key==='Escape') hideNewNoteInput();" />
+            <button onclick="submitNewNote()"
+              class="bg-red-500 hover:bg-red-600 text-white text-xs font-semibold px-2 py-1.5 rounded-lg transition shrink-0">OK</button>
+            <button onclick="hideNewNoteInput()"
+              class="bg-stone-200 hover:bg-stone-300 text-stone-600 text-xs font-semibold px-2 py-1.5 rounded-lg transition shrink-0">Cancel</button>
+          </div>
           <p id="notes-empty" class="hidden text-sm text-stone-400 italic mt-2">No notes yet. Create one!</p>
         </div>
 
@@ -192,8 +201,14 @@
           <div class="flex items-center gap-2 mb-2">
             <input id="note-title-input" type="text" placeholder="Note title"
               class="text-base font-semibold text-stone-700 border-b border-transparent hover:border-stone-300 focus:border-red-400 focus:outline-none px-1 py-0.5 flex-1 bg-transparent transition" />
-            <button onclick="confirmDeleteNote()" title="Delete note"
-              class="text-stone-400 hover:text-red-500 transition text-lg leading-none">&times;</button>
+            <div id="note-delete-wrap" class="flex items-center gap-1">
+              <button id="note-delete-btn" onclick="showDeleteNoteConfirm()" title="Delete note"
+                class="text-stone-400 hover:text-red-500 transition text-lg leading-none">&times;</button>
+              <span id="note-delete-confirm" class="hidden flex items-center gap-1">
+                <button onclick="executeDeleteNote()" class="text-red-500 text-xs font-semibold hover:text-red-700 transition">Delete?</button>
+                <button onclick="hideDeleteNoteConfirm()" class="text-stone-400 text-xs font-medium hover:text-stone-600 transition">No</button>
+              </span>
+            </div>
           </div>
           <textarea id="notes-area" placeholder="Type your notes here..."
             class="w-full h-40 resize-y border border-stone-200 rounded-lg px-3 py-2 text-stone-700 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"></textarea>
