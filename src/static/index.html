@@ -126,12 +126,43 @@
 
     <!-- Notes Panel -->
     <div class="bg-white rounded-2xl shadow p-6 mt-6">
-      <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-bold text-stone-700">Notes</h2>
         <span id="notes-status" class="text-xs text-stone-400"></span>
       </div>
-      <textarea id="notes-area" placeholder="Type your notes here..."
-        class="w-full h-40 resize-y border border-stone-200 rounded-lg px-3 py-2 text-stone-700 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"></textarea>
+
+      <div class="flex flex-col md:flex-row gap-4">
+        <!-- Note list sidebar -->
+        <div class="md:w-48 flex-shrink-0 flex flex-col">
+          <input id="notes-search" type="text" placeholder="Search notes..."
+            class="border border-stone-300 rounded-lg px-2 py-1.5 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-red-400 mb-2" />
+          <div id="notes-list" class="flex flex-col gap-1 max-h-60 overflow-y-auto">
+            <!-- Note items injected by JS -->
+          </div>
+          <button onclick="promptCreateNote()"
+            class="w-full mt-2 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition">
+            + New Note
+          </button>
+          <p id="notes-empty" class="hidden text-sm text-stone-400 italic mt-2">No notes yet. Create one!</p>
+        </div>
+
+        <!-- Active note editor -->
+        <div id="note-editor" class="flex-1 hidden">
+          <div class="flex items-center gap-2 mb-2">
+            <input id="note-title-input" type="text" placeholder="Note title"
+              class="text-base font-semibold text-stone-700 border-b border-transparent hover:border-stone-300 focus:border-red-400 focus:outline-none px-1 py-0.5 flex-1 bg-transparent transition" />
+            <button onclick="confirmDeleteNote()" title="Delete note"
+              class="text-stone-400 hover:text-red-500 transition text-lg leading-none">&times;</button>
+          </div>
+          <textarea id="notes-area" placeholder="Type your notes here..."
+            class="w-full h-40 resize-y border border-stone-200 rounded-lg px-3 py-2 text-stone-700 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"></textarea>
+        </div>
+
+        <!-- Placeholder when no note selected -->
+        <div id="note-placeholder" class="flex-1 flex items-center justify-center h-40 text-stone-400 text-sm italic">
+          Select a note or create a new one
+        </div>
+      </div>
     </div>
 
     <!-- AI Assistant Panel -->

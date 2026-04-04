@@ -76,21 +76,116 @@ async def reorder_tasks(user_id: str, ids: List[str]) -> List[dict]:
 
 # ── Notes ──────────────────────────────────────────────────────────────────
 
-async def load_notes(user_id: str) -> str:
-    """Load notes for a user."""
+async def load_notes_list(user_id: str) -> List[dict]:
+    """Load all note summaries for a user, ordered by most recently updated.
+
+    Args:
+        user_id: The ID of the user.
+
+    Returns:
+        A list of dicts with id, title, and updated_at fields.
+    """
     pool = get_db()
-    row = await pool.fetchrow(
-        "SELECT content FROM notes WHERE user_id = $1",
+    rows = await pool.fetch(
+        "SELECT id, title, updated_at FROM notes WHERE user_id = $1 ORDER BY updated_at DESC",
         user_id,
     )
-    return row["content"] if row else ""
+    return [
+        {"id": r["id"], "title": r["title"], "updated_at": r["updated_at"].isoformat()}
+        for r in rows
+    ]
 
 
-async def save_notes(user_id: str, content: str) -> None:
-    """Upsert notes for a user."""
+async def load_note(user_id: str, note_id: str) -> dict | None:
+    """Load a single note's full content.
+
+    Args:
+        user_id: The ID of the user.
+        note_id: The ID of the note.
+
+    Returns:
+        A dict with id, title, and content, or None if not found.
+    """
+    pool = get_db()
+    row = await pool.fetchrow(
+        "SELECT id, title, content FROM notes WHERE id = $1 AND user_id = $2",
+        note_id, user_id,
+    )
+    if not row:
+        return None
+    return {"id": row["id"], "title": row["title"], "content": row["content"]}
+
+
+async def create_note(user_id: str, note_id: str, title: str) -> dict:
+    """Create a new note and return it.
+
+    Args:
+        user_id: The ID of the user.
+        note_id: The UUID for the new note.
+        title: The title of the note.
+
+    Returns:
+        A dict with id, title, and content fields.
+    """
     pool = get_db()
     await pool.execute(
-        "INSERT INTO notes (user_id, content) VALUES ($1, $2) "
-        "ON CONFLICT (user_id) DO UPDATE SET content = $2",
-        user_id, content,
+        "INSERT INTO notes (id, user_id, title, content, updated_at) VALUES ($1, $2, $3, '', NOW())",
+        note_id, user_id, title,
     )
+    return {"id": note_id, "title": title, "content": ""}
+
+
+async def save_note(user_id: str, note_id: str, content: str) -> bool:
+    """Update a note's content.
+
+    Args:
+        user_id: The ID of the user.
+        note_id: The ID of the note.
+        content: The new content.
+
+    Returns:
+        True if the note was found and updated.
+    """
+    pool = get_db()
+    result = await pool.execute(
+        "UPDATE notes SET content = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3",
+        content, note_id, user_id,
+    )
+    return result.split()[-1] != "0"
+
+
+async def rename_note(user_id: str, note_id: str, title: str) -> bool:
+    """Rename a note.
+
+    Args:
+        user_id: The ID of the user.
+        note_id: The ID of the note.
+        title: The new title.
+
+    Returns:
+        True if the note was found and renamed.
+    """
+    pool = get_db()
+    result = await pool.execute(
+        "UPDATE notes SET title = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3",
+        title, note_id, user_id,
+    )
+    return result.split()[-1] != "0"
+
+
+async def delete_note(user_id: str, note_id: str) -> bool:
+    """Delete a note.
+
+    Args:
+        user_id: The ID of the user.
+        note_id: The ID of the note.
+
+    Returns:
+        True if a row was deleted.
+    """
+    pool = get_db()
+    result = await pool.execute(
+        "DELETE FROM notes WHERE id = $1 AND user_id = $2",
+        note_id, user_id,
+    )
+    return result.split()[-1] != "0"

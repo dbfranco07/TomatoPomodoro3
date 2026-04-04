@@ -10,6 +10,6 @@ function initApp() {
   initTasks();
   initNotes();
   fetchTasks();
-  fetchNotes();
+  fetchNotesList();
   loadAISettings();
 }
