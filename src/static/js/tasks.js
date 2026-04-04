@@ -2,7 +2,8 @@
 const taskList = document.getElementById('task-list');
 
 async function fetchTasks() {
-  const res = await fetch('/tasks');
+  const res = await apiFetch('/tasks');
+  if (!res) return;
   const tasks = await res.json();
   renderTasks(tasks);
 }
@@ -51,18 +52,19 @@ async function addTask() {
   const input = document.getElementById('new-task-input');
   const text = input.value.trim();
   if (!text) return;
-  const res = await fetch('/tasks', {
+  const res = await apiFetch('/tasks', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text })
   });
+  if (!res) return;
   const task = await res.json();
   taskList.appendChild(buildTaskEl(task));
   input.value = '';
 }
 
 async function toggleTask(id, checked, textSpan) {
-  await fetch(`/tasks/${id}`, {
+  await apiFetch(`/tasks/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ checked })
@@ -77,7 +79,7 @@ async function toggleTask(id, checked, textSpan) {
 }
 
 async function deleteTask(id) {
-  await fetch(`/tasks/${id}`, { method: 'DELETE' });
+  await apiFetch(`/tasks/${id}`, { method: 'DELETE' });
   const el = taskList.querySelector(`[data-id="${id}"]`);
   if (el) el.remove();
 }
@@ -89,7 +91,7 @@ function initTasks() {
     dragClass: 'sortable-drag',
     onEnd: async () => {
       const ids = [...taskList.querySelectorAll('[data-id]')].map(el => el.dataset.id);
-      await fetch('/tasks/reorder', {
+      await apiFetch('/tasks/reorder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids })

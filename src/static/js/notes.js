@@ -4,14 +4,15 @@ const notesStatus = document.getElementById('notes-status');
 let notesSaveTimer = null;
 
 async function fetchNotes() {
-  const res = await fetch('/notes');
+  const res = await apiFetch('/notes');
+  if (!res) return;
   const data = await res.json();
   notesArea.value = data.content;
 }
 
 async function saveNotes() {
-  notesStatus.textContent = 'Saving…';
-  await fetch('/notes', {
+  notesStatus.textContent = 'Saving\u2026';
+  await apiFetch('/notes', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content: notesArea.value })

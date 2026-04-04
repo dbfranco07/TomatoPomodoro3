@@ -9,5 +9,6 @@
 template
 src/tasks.json
 src/notes.txt
+src/pomodoro.db
 
 CLAUDE.md

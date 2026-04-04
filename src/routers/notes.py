@@ -1,16 +1,17 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from schemas import NotesBody
+from services.auth import get_current_user
 from services.persistence import load_notes, save_notes
 
 router = APIRouter(prefix="/notes", tags=["notes"])
 
 
 @router.get("")
-def get_notes():
-    return {"content": load_notes()}
+async def get_notes(user=Depends(get_current_user)):
+    return {"content": await load_notes(user["id"])}
 
 
 @router.put("")
-def put_notes(body: NotesBody):
-    save_notes(body.content)
+async def put_notes(body: NotesBody, user=Depends(get_current_user)):
+    await save_notes(user["id"], body.content)
     return {"ok": True}

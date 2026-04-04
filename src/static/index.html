@@ -20,180 +20,219 @@
 </head>
 <body class="bg-stone-100 min-h-screen p-6">
 
-  <!-- Page title -->
-  <h1 class="text-3xl font-bold text-red-600 mb-6 text-center tracking-wide">TomatoPomodoro</h1>
+  <!-- ── Auth Section (shown when not logged in) ── -->
+  <div id="auth-section" class="hidden min-h-[80vh] flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
+      <h1 class="text-2xl font-bold text-red-600 text-center mb-1">TomatoPomodoro</h1>
+      <h2 id="auth-title" class="text-lg font-semibold text-stone-700 text-center mb-6">Log in</h2>
 
-  <!-- Top: Input Section -->
-  <div class="bg-white rounded-2xl shadow p-5 mb-6 flex flex-wrap items-end gap-4">
-    <div class="flex flex-col gap-1">
-      <label class="text-sm font-medium text-stone-500">Work time (min)</label>
-      <input id="input-work" type="number" min="0.1" step="0.1" placeholder="e.g. 25"
-        class="border border-stone-300 rounded-lg px-3 py-2 w-32 text-stone-800 focus:outline-none focus:ring-2 focus:ring-red-400" />
-    </div>
-    <div class="flex flex-col gap-1">
-      <label class="text-sm font-medium text-stone-500">Break time (min)</label>
-      <input id="input-break" type="number" min="0.1" step="0.1" placeholder="e.g. 5"
-        class="border border-stone-300 rounded-lg px-3 py-2 w-32 text-stone-800 focus:outline-none focus:ring-2 focus:ring-red-400" />
-    </div>
-    <div class="flex gap-3 ml-auto">
-      <button id="btn-start" onclick="startSession()"
-        class="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-semibold px-5 py-2 rounded-lg transition">
-        Start Session
-      </button>
-      <button id="btn-stop" onclick="stopSession()"
-        class="bg-stone-200 hover:bg-stone-300 active:bg-stone-400 text-stone-700 font-semibold px-5 py-2 rounded-lg transition">
-        Stop Session
-      </button>
+      <div class="flex flex-col gap-4">
+        <input id="auth-username" type="text" placeholder="Username" autocomplete="username"
+          class="border border-stone-300 rounded-lg px-3 py-2 text-stone-800 focus:outline-none focus:ring-2 focus:ring-red-400"
+          onkeydown="if(event.key==='Enter') submitAuth()" />
+        <input id="auth-password" type="password" placeholder="Password" autocomplete="current-password"
+          class="border border-stone-300 rounded-lg px-3 py-2 text-stone-800 focus:outline-none focus:ring-2 focus:ring-red-400"
+          onkeydown="if(event.key==='Enter') submitAuth()" />
+        <p id="auth-error" class="text-red-500 text-sm min-h-[1.25rem]"></p>
+        <button id="auth-submit-btn" onclick="submitAuth()"
+          class="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-semibold px-5 py-2 rounded-lg transition">
+          Log in
+        </button>
+        <p class="text-sm text-stone-500 text-center">
+          <span id="auth-toggle-text">Don't have an account? </span>
+          <a id="auth-toggle-link" href="#" onclick="toggleAuthMode(); return false"
+            class="text-red-500 hover:text-red-600 font-medium">Register</a>
+        </p>
+      </div>
     </div>
   </div>
 
-  <!-- Bottom: Timer + Todo -->
-  <div class="flex flex-col md:flex-row gap-6">
+  <!-- ── App Section (shown when logged in) ── -->
+  <div id="app-section" class="hidden">
 
-    <!-- Timer Panel -->
-    <div class="bg-white rounded-2xl shadow p-6 flex flex-col items-center justify-center gap-4 min-w-[260px] flex-1">
-      <div id="status-badge"
-        class="text-sm font-semibold uppercase tracking-widest px-4 py-1 rounded-full bg-red-100 text-red-600">
-        Stopped
-      </div>
-      <div id="timer-display" class="text-7xl font-bold text-stone-800 mt-2">
-        --:--
-      </div>
-      <div id="session-display" class="text-stone-500 text-base mt-1">
-        Session No.: 0
+    <!-- Page title + logout -->
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-3xl font-bold text-red-600 tracking-wide">TomatoPomodoro</h1>
+      <div class="flex items-center gap-3">
+        <span id="logout-username" class="text-sm text-stone-500"></span>
+        <button onclick="logout()"
+          class="text-sm text-stone-400 hover:text-red-500 font-medium transition">Logout</button>
       </div>
     </div>
 
-    <!-- Todo Panel -->
-    <div class="bg-white rounded-2xl shadow p-6 flex flex-col flex-1 min-w-[280px]">
-      <h2 class="text-lg font-bold text-stone-700 mb-4">To-Do Tasks</h2>
-
-      <!-- Task list -->
-      <ul id="task-list" class="flex flex-col gap-2 mb-4 min-h-[40px]">
-        <!-- Tasks injected by JS -->
-      </ul>
-
-      <!-- Add task -->
-      <div class="flex gap-2 mt-auto">
-        <input id="new-task-input" type="text" placeholder="Add a new task..."
-          class="border border-stone-300 rounded-lg px-3 py-2 flex-1 text-stone-800 focus:outline-none focus:ring-2 focus:ring-red-400"
-          onkeydown="if(event.key==='Enter') addTask()" />
-        <button onclick="addTask()"
-          class="bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-lg transition">
-          +
+    <!-- Top: Input Section -->
+    <div class="bg-white rounded-2xl shadow p-5 mb-6 flex flex-wrap items-end gap-4">
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-medium text-stone-500">Work time (min)</label>
+        <input id="input-work" type="number" min="0.1" step="0.1" placeholder="e.g. 25"
+          class="border border-stone-300 rounded-lg px-3 py-2 w-32 text-stone-800 focus:outline-none focus:ring-2 focus:ring-red-400" />
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-medium text-stone-500">Break time (min)</label>
+        <input id="input-break" type="number" min="0.1" step="0.1" placeholder="e.g. 5"
+          class="border border-stone-300 rounded-lg px-3 py-2 w-32 text-stone-800 focus:outline-none focus:ring-2 focus:ring-red-400" />
+      </div>
+      <div class="flex gap-3 ml-auto">
+        <button id="btn-start" onclick="startSession()"
+          class="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-semibold px-5 py-2 rounded-lg transition">
+          Start Session
+        </button>
+        <button id="btn-stop" onclick="stopSession()"
+          class="bg-stone-200 hover:bg-stone-300 active:bg-stone-400 text-stone-700 font-semibold px-5 py-2 rounded-lg transition">
+          Stop Session
         </button>
       </div>
     </div>
 
-  </div>
+    <!-- Bottom: Timer + Todo -->
+    <div class="flex flex-col md:flex-row gap-6">
 
-  <!-- Notes Panel -->
-  <div class="bg-white rounded-2xl shadow p-6 mt-6">
-    <div class="flex items-center justify-between mb-3">
-      <h2 class="text-lg font-bold text-stone-700">Notes</h2>
-      <span id="notes-status" class="text-xs text-stone-400"></span>
-    </div>
-    <textarea id="notes-area" placeholder="Type your notes here..."
-      class="w-full h-40 resize-y border border-stone-200 rounded-lg px-3 py-2 text-stone-700 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"></textarea>
-  </div>
-
-  <!-- AI Assistant Panel -->
-  <div class="bg-white rounded-2xl shadow p-6 mt-6">
-
-    <!-- Header row -->
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-bold text-stone-700">AI Assistant</h2>
-      <button onclick="toggleAISettings()"
-        class="text-stone-400 hover:text-red-500 transition text-xl leading-none" title="Settings">&#9881;</button>
-    </div>
-
-    <!-- Settings drawer (hidden by default) -->
-    <div id="ai-settings" class="hidden mb-4 p-4 bg-stone-50 border border-stone-200 rounded-xl flex flex-col gap-3">
-      <div class="flex flex-wrap gap-4">
-        <div class="flex flex-col gap-1 flex-1 min-w-[140px]">
-          <label class="text-xs font-medium text-stone-500">Provider</label>
-          <select id="ai-provider" onchange="onProviderChange()"
-            class="border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-red-400">
-            <option value="anthropic">Anthropic (Claude)</option>
-            <option value="openai_compat">OpenAI / Ollama / vLLM</option>
-          </select>
+      <!-- Timer Panel -->
+      <div class="bg-white rounded-2xl shadow p-6 flex flex-col items-center justify-center gap-4 min-w-[260px] flex-1">
+        <div id="status-badge"
+          class="text-sm font-semibold uppercase tracking-widest px-4 py-1 rounded-full bg-red-100 text-red-600">
+          Stopped
         </div>
-        <div class="flex flex-col gap-1 flex-1 min-w-[140px]">
-          <label class="text-xs font-medium text-stone-500">Model</label>
-          <input id="ai-model" type="text" placeholder="e.g. claude-haiku-4-5-20251001"
-            class="border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-red-400" />
+        <div id="timer-display" class="text-7xl font-bold text-stone-800 mt-2">
+          --:--
+        </div>
+        <div id="session-display" class="text-stone-500 text-base mt-1">
+          Session No.: 0
         </div>
       </div>
-      <div class="flex flex-wrap gap-4">
-        <div class="flex flex-col gap-1 flex-1 min-w-[140px]">
-          <label class="text-xs font-medium text-stone-500">API Key</label>
-          <input id="ai-api-key" type="password" placeholder="sk-..."
-            class="border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-red-400" />
-        </div>
-        <div id="ai-base-url-wrap" class="flex flex-col gap-1 flex-1 min-w-[140px] hidden">
-          <label class="text-xs font-medium text-stone-500">Base URL</label>
-          <input id="ai-base-url" type="text" placeholder="http://localhost:11434/v1"
-            class="border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-red-400" />
-        </div>
-      </div>
-      <button onclick="saveAISettings()"
-        class="self-start bg-red-500 hover:bg-red-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
-        Save to browser
-      </button>
-    </div>
 
-    <!-- Action buttons -->
-    <div class="flex flex-wrap gap-2 mb-3">
-      <button onclick="setAction('summarize')" id="btn-action-summarize"
-        class="action-btn bg-red-500 text-white text-sm font-medium px-4 py-1.5 rounded-full transition">
-        Summarize
-      </button>
-      <button onclick="setAction('cleanup')" id="btn-action-cleanup"
-        class="action-btn bg-stone-100 text-stone-600 text-sm font-medium px-4 py-1.5 rounded-full transition hover:bg-stone-200">
-        Clean up
-      </button>
-      <button onclick="setAction('expand')" id="btn-action-expand"
-        class="action-btn bg-stone-100 text-stone-600 text-sm font-medium px-4 py-1.5 rounded-full transition hover:bg-stone-200">
-        Expand
-      </button>
-      <button onclick="setAction('custom')" id="btn-action-custom"
-        class="action-btn bg-stone-100 text-stone-600 text-sm font-medium px-4 py-1.5 rounded-full transition hover:bg-stone-200">
-        Custom
-      </button>
-    </div>
+      <!-- Todo Panel -->
+      <div class="bg-white rounded-2xl shadow p-6 flex flex-col flex-1 min-w-[280px]">
+        <h2 class="text-lg font-bold text-stone-700 mb-4">To-Do Tasks</h2>
 
-    <!-- Custom prompt input (shown only for Custom action) -->
-    <div id="custom-prompt-wrap" class="hidden mb-3">
-      <input id="ai-custom-prompt" type="text" placeholder="e.g. Rewrite this as an email to my team..."
-        class="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-red-400" />
-    </div>
+        <!-- Task list -->
+        <ul id="task-list" class="flex flex-col gap-2 mb-4 min-h-[40px]">
+          <!-- Tasks injected by JS -->
+        </ul>
 
-    <!-- Side-by-side input / output -->
-    <div class="flex flex-col md:flex-row gap-4 mb-4">
-      <div class="flex flex-col flex-1 gap-1">
-        <label class="text-xs font-medium text-stone-400 uppercase tracking-wide">Your input</label>
-        <textarea id="ai-input" placeholder="Paste your notes, bullet points, or ideas here..."
-          class="w-full h-40 resize-y border border-stone-200 rounded-lg px-3 py-2 text-stone-700 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"></textarea>
-      </div>
-      <div class="flex flex-col flex-1 gap-1">
-        <label class="text-xs font-medium text-stone-400 uppercase tracking-wide">Output</label>
-        <div id="ai-output"
-          class="w-full h-40 overflow-y-auto border border-stone-200 rounded-lg px-3 py-2 text-stone-700 text-sm bg-stone-50 whitespace-pre-wrap">
+        <!-- Add task -->
+        <div class="flex gap-2 mt-auto">
+          <input id="new-task-input" type="text" placeholder="Add a new task..."
+            class="border border-stone-300 rounded-lg px-3 py-2 flex-1 text-stone-800 focus:outline-none focus:ring-2 focus:ring-red-400"
+            onkeydown="if(event.key==='Enter') addTask()" />
+          <button onclick="addTask()"
+            class="bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-lg transition">
+            +
+          </button>
         </div>
       </div>
+
     </div>
 
-    <!-- Generate button + status -->
-    <div class="flex items-center gap-4">
-      <button onclick="runAI()" id="btn-generate"
-        class="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-semibold px-6 py-2 rounded-lg transition flex items-center gap-2">
-        <span>Generate</span>
-        <span id="ai-spinner" class="hidden animate-spin">&#8635;</span>
-      </button>
-      <span id="ai-status" class="text-sm text-stone-400"></span>
+    <!-- Notes Panel -->
+    <div class="bg-white rounded-2xl shadow p-6 mt-6">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-bold text-stone-700">Notes</h2>
+        <span id="notes-status" class="text-xs text-stone-400"></span>
+      </div>
+      <textarea id="notes-area" placeholder="Type your notes here..."
+        class="w-full h-40 resize-y border border-stone-200 rounded-lg px-3 py-2 text-stone-700 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"></textarea>
     </div>
 
-  </div>
+    <!-- AI Assistant Panel -->
+    <div class="bg-white rounded-2xl shadow p-6 mt-6">
+
+      <!-- Header row -->
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-stone-700">AI Assistant</h2>
+        <button onclick="toggleAISettings()"
+          class="text-stone-400 hover:text-red-500 transition text-xl leading-none" title="Settings">&#9881;</button>
+      </div>
+
+      <!-- Settings drawer (hidden by default) -->
+      <div id="ai-settings" class="hidden mb-4 p-4 bg-stone-50 border border-stone-200 rounded-xl flex flex-col gap-3">
+        <div class="flex flex-wrap gap-4">
+          <div class="flex flex-col gap-1 flex-1 min-w-[140px]">
+            <label class="text-xs font-medium text-stone-500">Provider</label>
+            <select id="ai-provider" onchange="onProviderChange()"
+              class="border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-red-400">
+              <option value="anthropic">Anthropic (Claude)</option>
+              <option value="openai_compat">OpenAI / Ollama / vLLM</option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1 flex-1 min-w-[140px]">
+            <label class="text-xs font-medium text-stone-500">Model</label>
+            <input id="ai-model" type="text" placeholder="e.g. claude-haiku-4-5-20251001"
+              class="border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-red-400" />
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-4">
+          <div class="flex flex-col gap-1 flex-1 min-w-[140px]">
+            <label class="text-xs font-medium text-stone-500">API Key</label>
+            <input id="ai-api-key" type="password" placeholder="sk-..."
+              class="border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-red-400" />
+          </div>
+          <div id="ai-base-url-wrap" class="flex flex-col gap-1 flex-1 min-w-[140px] hidden">
+            <label class="text-xs font-medium text-stone-500">Base URL</label>
+            <input id="ai-base-url" type="text" placeholder="http://localhost:11434/v1"
+              class="border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-red-400" />
+          </div>
+        </div>
+        <button onclick="saveAISettings()"
+          class="self-start bg-red-500 hover:bg-red-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
+          Save to browser
+        </button>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="flex flex-wrap gap-2 mb-3">
+        <button onclick="setAction('summarize')" id="btn-action-summarize"
+          class="action-btn bg-red-500 text-white text-sm font-medium px-4 py-1.5 rounded-full transition">
+          Summarize
+        </button>
+        <button onclick="setAction('cleanup')" id="btn-action-cleanup"
+          class="action-btn bg-stone-100 text-stone-600 text-sm font-medium px-4 py-1.5 rounded-full transition hover:bg-stone-200">
+          Clean up
+        </button>
+        <button onclick="setAction('expand')" id="btn-action-expand"
+          class="action-btn bg-stone-100 text-stone-600 text-sm font-medium px-4 py-1.5 rounded-full transition hover:bg-stone-200">
+          Expand
+        </button>
+        <button onclick="setAction('custom')" id="btn-action-custom"
+          class="action-btn bg-stone-100 text-stone-600 text-sm font-medium px-4 py-1.5 rounded-full transition hover:bg-stone-200">
+          Custom
+        </button>
+      </div>
+
+      <!-- Custom prompt input (shown only for Custom action) -->
+      <div id="custom-prompt-wrap" class="hidden mb-3">
+        <input id="ai-custom-prompt" type="text" placeholder="e.g. Rewrite this as an email to my team..."
+          class="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-red-400" />
+      </div>
+
+      <!-- Side-by-side input / output -->
+      <div class="flex flex-col md:flex-row gap-4 mb-4">
+        <div class="flex flex-col flex-1 gap-1">
+          <label class="text-xs font-medium text-stone-400 uppercase tracking-wide">Your input</label>
+          <textarea id="ai-input" placeholder="Paste your notes, bullet points, or ideas here..."
+            class="w-full h-40 resize-y border border-stone-200 rounded-lg px-3 py-2 text-stone-700 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"></textarea>
+        </div>
+        <div class="flex flex-col flex-1 gap-1">
+          <label class="text-xs font-medium text-stone-400 uppercase tracking-wide">Output</label>
+          <div id="ai-output"
+            class="w-full h-40 overflow-y-auto border border-stone-200 rounded-lg px-3 py-2 text-stone-700 text-sm bg-stone-50 whitespace-pre-wrap">
+          </div>
+        </div>
+      </div>
+
+      <!-- Generate button + status -->
+      <div class="flex items-center gap-4">
+        <button onclick="runAI()" id="btn-generate"
+          class="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-semibold px-6 py-2 rounded-lg transition flex items-center gap-2">
+          <span>Generate</span>
+          <span id="ai-spinner" class="hidden animate-spin">&#8635;</span>
+        </button>
+        <span id="ai-status" class="text-sm text-stone-400"></span>
+      </div>
+
+    </div>
+
+  </div><!-- /app-section -->
 
   <!-- Phase-end modal -->
   <div id="modal-overlay"
@@ -212,6 +251,7 @@
   <audio id="notif-sound" src="/assets/to_be_continued.mp3" preload="auto"></audio>
 
   <script src="/static/js/timer.js"></script>
+  <script src="/static/js/auth.js"></script>
   <script src="/static/js/tasks.js"></script>
   <script src="/static/js/notes.js"></script>
   <script src="/static/js/ai.js"></script>

@@ -18,6 +18,21 @@ class NotesBody(BaseModel):
     content: str
 
 
+class UserCreate(BaseModel):
+    username: str
+    password: str
+
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+
+class UserOut(BaseModel):
+    id: str
+    username: str
+
+
 class AIRequest(BaseModel):
     provider: str       # "anthropic" | "openai_compat"
     model: str
