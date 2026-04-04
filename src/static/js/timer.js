@@ -4,6 +4,7 @@ let breakSec = 0;
 let timeLeft = 0;
 let isWork = true;
 let isRunning = false;
+let isPaused = false;
 let sessionNo = 0;
 let timerInterval = null;
 
@@ -14,6 +15,8 @@ const sessionDisplay = document.getElementById('session-display');
 const modal = document.getElementById('modal-overlay');
 const modalTitle = document.getElementById('modal-title');
 const modalMessage = document.getElementById('modal-message');
+const btnStart = document.getElementById('btn-start');
+const btnPause = document.getElementById('btn-pause');
 
 function fmtTime(sec) {
   const m = Math.floor(sec / 60).toString().padStart(2, '0');
@@ -46,6 +49,11 @@ function startSession() {
   sessionNo = 0;
   timeLeft = workSec;
   isRunning = true;
+  isPaused = false;
+
+  btnStart.classList.add('hidden');
+  btnPause.classList.remove('hidden');
+  btnPause.textContent = 'Pause';
 
   setStatusBadge('Working...', 'bg-red-100 text-red-600');
   updateDisplay();
@@ -57,9 +65,14 @@ function stopSession() {
   clearInterval(timerInterval);
   timerInterval = null;
   isRunning = false;
+  isPaused = false;
   isWork = true;
   sessionNo = 0;
   timeLeft = 0;
+
+  btnStart.classList.remove('hidden');
+  btnPause.classList.add('hidden');
+
   setStatusBadge('Stopped', 'bg-stone-100 text-stone-500');
   timerDisplay.textContent = '--:--';
   sessionDisplay.textContent = 'Session No.: 0';
@@ -68,8 +81,33 @@ function stopSession() {
   modal.classList.remove('active');
 }
 
-function tick() {
+function togglePause() {
   if (!isRunning) return;
+
+  if (isPaused) {
+    // Unpause: resume the timer
+    isPaused = false;
+    btnPause.textContent = 'Pause';
+    timerInterval = setInterval(tick, 1000);
+
+    if (isWork) {
+      setStatusBadge('Working...', 'bg-red-100 text-red-600');
+    } else {
+      setStatusBadge('On a Break...', 'bg-green-100 text-green-600');
+    }
+  } else {
+    // Pause: freeze the timer
+    isPaused = true;
+    btnPause.textContent = 'Unpause';
+    clearInterval(timerInterval);
+    timerInterval = null;
+
+    setStatusBadge('Paused', 'bg-amber-100 text-amber-600');
+  }
+}
+
+function tick() {
+  if (!isRunning || isPaused) return;
   timeLeft--;
   updateDisplay();
   if (timeLeft <= 0) {
@@ -104,6 +142,8 @@ function dismissModal() {
   // Switch phase
   isWork = !isWork;
   timeLeft = isWork ? workSec : breakSec;
+  isPaused = false;
+  btnPause.textContent = 'Pause';
 
   if (isWork) {
     setStatusBadge('Working...', 'bg-red-100 text-red-600');
