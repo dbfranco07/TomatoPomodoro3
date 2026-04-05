@@ -16,11 +16,11 @@ function renderTasks(tasks) {
 function buildTaskEl(task) {
   const li = document.createElement('li');
   li.dataset.id = task.id;
-  li.className = 'task-item flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 select-none';
+  li.className = 'task-item flex items-center gap-2 bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded-lg px-3 py-2 select-none';
 
   // Drag handle
   const handle = document.createElement('span');
-  handle.className = 'text-stone-300 cursor-grab text-lg leading-none pr-1';
+  handle.className = 'text-stone-300 dark:text-stone-500 cursor-grab text-lg leading-none pr-1';
   handle.innerHTML = '&#x2261;';
   li.appendChild(handle);
 
@@ -35,15 +35,20 @@ function buildTaskEl(task) {
   // Text
   const textSpan = document.createElement('span');
   textSpan.textContent = task.text;
-  textSpan.className = 'flex-1 text-stone-700 text-sm' + (task.checked ? ' line-through text-stone-400' : '');
+  textSpan.className = 'flex-1 text-stone-700 dark:text-stone-200 text-sm' + (task.checked ? ' line-through !text-stone-400' : '');
   li.appendChild(textSpan);
 
-  // Delete button
+  // Delete button with inline confirmation
+  const delWrap = document.createElement('div');
+  delWrap.className = 'flex items-center gap-1 ml-1';
+
   const del = document.createElement('button');
   del.innerHTML = '&times;';
-  del.className = 'text-stone-300 hover:text-red-500 font-bold text-lg leading-none transition ml-1';
-  del.onclick = () => deleteTask(task.id);
-  li.appendChild(del);
+  del.className = 'text-stone-300 hover:text-red-500 font-bold text-lg leading-none transition';
+  del.onclick = () => showDeleteConfirm(delWrap, del, task.id);
+  delWrap.appendChild(del);
+
+  li.appendChild(delWrap);
 
   return li;
 }
@@ -59,7 +64,9 @@ async function addTask() {
   });
   if (!res) return;
   const task = await res.json();
-  taskList.appendChild(buildTaskEl(task));
+  const el = buildTaskEl(task);
+  el.classList.add('task-enter');
+  taskList.appendChild(el);
   input.value = '';
 }
 
@@ -70,18 +77,58 @@ async function toggleTask(id, checked, textSpan) {
     body: JSON.stringify({ checked })
   });
   if (checked) {
-    textSpan.classList.add('line-through', 'text-stone-400');
-    textSpan.classList.remove('text-stone-700');
+    textSpan.classList.add('line-through', '!text-stone-400');
+    textSpan.classList.remove('text-stone-700', 'dark:text-stone-200');
   } else {
-    textSpan.classList.remove('line-through', 'text-stone-400');
-    textSpan.classList.add('text-stone-700');
+    textSpan.classList.remove('line-through', '!text-stone-400');
+    textSpan.classList.add('text-stone-700', 'dark:text-stone-200');
   }
+}
+
+function showDeleteConfirm(wrap, delBtn, taskId) {
+  // Already showing confirm? ignore
+  if (wrap.dataset.confirming) return;
+  wrap.dataset.confirming = 'true';
+
+  delBtn.classList.add('hidden');
+
+  const yes = document.createElement('button');
+  yes.textContent = 'Delete?';
+  yes.className = 'text-red-500 text-xs font-semibold hover:text-red-700 transition';
+  yes.onclick = (e) => { e.stopPropagation(); deleteTask(taskId); };
+
+  const no = document.createElement('button');
+  no.textContent = 'No';
+  no.className = 'text-stone-400 text-xs font-medium hover:text-stone-600 transition';
+  no.onclick = (e) => {
+    e.stopPropagation();
+    yes.remove();
+    no.remove();
+    delBtn.classList.remove('hidden');
+    delete wrap.dataset.confirming;
+  };
+
+  wrap.appendChild(yes);
+  wrap.appendChild(no);
+
+  // Auto-dismiss after 3 seconds
+  setTimeout(() => {
+    if (wrap.dataset.confirming) {
+      yes.remove();
+      no.remove();
+      delBtn.classList.remove('hidden');
+      delete wrap.dataset.confirming;
+    }
+  }, 3000);
 }
 
 async function deleteTask(id) {
   await apiFetch(`/tasks/${id}`, { method: 'DELETE' });
   const el = taskList.querySelector(`[data-id="${id}"]`);
-  if (el) el.remove();
+  if (el) {
+    el.classList.add('task-exit');
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+  }
 }
 
 function initTasks() {

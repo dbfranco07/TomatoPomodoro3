@@ -36,7 +36,7 @@ function renderNotesList() {
     item.className = `cursor-pointer px-3 py-2 rounded-lg text-sm truncate whitespace-nowrap flex-shrink-0 transition ${
       isActive
         ? 'bg-red-500 text-white font-semibold'
-        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+        : 'bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-600'
     }`;
     item.textContent = note.title;
     item.title = note.title;
@@ -69,20 +69,35 @@ async function selectNote(noteId) {
   renderNotesList();
 }
 
-async function promptCreateNote() {
-  const title = prompt('Enter a name for your new note:');
-  if (!title || !title.trim()) return;
+function showNewNoteInput() {
+  document.getElementById('new-note-btn').classList.add('hidden');
+  const wrap = document.getElementById('new-note-input-wrap');
+  wrap.classList.remove('hidden');
+  const input = document.getElementById('new-note-input');
+  input.value = '';
+  input.focus();
+}
+
+function hideNewNoteInput() {
+  document.getElementById('new-note-btn').classList.remove('hidden');
+  document.getElementById('new-note-input-wrap').classList.add('hidden');
+}
+
+async function submitNewNote() {
+  const input = document.getElementById('new-note-input');
+  const title = input.value.trim();
+  if (!title) { input.focus(); return; }
 
   const res = await apiFetch('/notes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title: title.trim() })
+    body: JSON.stringify({ title })
   });
   if (!res) return;
   const note = await res.json();
 
-  // Add to list and select it
   notesData.unshift({ id: note.id, title: note.title, updated_at: new Date().toISOString() });
+  hideNewNoteInput();
   renderNotesList();
   await selectNote(note.id);
 }
@@ -116,14 +131,29 @@ async function saveCurrentTitle() {
   renderNotesList();
 }
 
-async function confirmDeleteNote() {
+let deleteNoteTimeout = null;
+
+function showDeleteNoteConfirm() {
   if (!currentNoteId) return;
-  const note = notesData.find(n => n.id === currentNoteId);
-  if (!confirm(`Delete "${note ? note.title : 'this note'}"?`)) return;
+  document.getElementById('note-delete-btn').classList.add('hidden');
+  document.getElementById('note-delete-confirm').classList.remove('hidden');
+
+  clearTimeout(deleteNoteTimeout);
+  deleteNoteTimeout = setTimeout(hideDeleteNoteConfirm, 3000);
+}
+
+function hideDeleteNoteConfirm() {
+  clearTimeout(deleteNoteTimeout);
+  document.getElementById('note-delete-btn').classList.remove('hidden');
+  document.getElementById('note-delete-confirm').classList.add('hidden');
+}
+
+async function executeDeleteNote() {
+  if (!currentNoteId) return;
+  hideDeleteNoteConfirm();
 
   await apiFetch(`/notes/${currentNoteId}`, { method: 'DELETE' });
 
-  // Remove from list
   notesData = notesData.filter(n => n.id !== currentNoteId);
   currentNoteId = null;
   notesArea.value = '';
@@ -132,7 +162,6 @@ async function confirmDeleteNote() {
   notePlaceholder.classList.remove('hidden');
   renderNotesList();
 
-  // Auto-select the first remaining note
   if (notesData.length > 0) {
     await selectNote(notesData[0].id);
   }
