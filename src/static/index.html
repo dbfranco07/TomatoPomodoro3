@@ -55,6 +55,12 @@
     .task-enter { animation: task-slide-in 0.25s ease-out; }
     .task-exit { animation: task-slide-out 0.3s ease-in forwards; pointer-events: none; }
 
+    /* Subtask & details transitions */
+    .subtask-item { transition: opacity 0.2s ease, max-height 0.2s ease; }
+    .subtask-item.hidden { display: none; }
+    .task-details { border-top: 1px solid #e7e5e4; }
+    .dark .task-details { border-top-color: #57534e; }
+
     /* Status badge smooth transition */
     #status-badge { transition: background-color 0.4s ease, color 0.4s ease; }
 
@@ -189,7 +195,14 @@
 
       <!-- Todo Panel -->
       <div class="bg-white dark:bg-stone-800 rounded-2xl shadow p-6 flex flex-col flex-1 min-w-[280px]">
-        <h2 class="text-lg font-bold text-stone-700 dark:text-stone-200 mb-4">To-Do Tasks</h2>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-stone-700 dark:text-stone-200">To-Do Tasks</h2>
+          <button id="toggle-subtasks-btn" onclick="toggleSubtasksExpanded()"
+            class="flex items-center gap-1 text-xs text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 font-medium transition">
+            <span id="subtasks-chevron" class="panel-chevron text-[10px]">&#9660;</span>
+            Collapse subtasks
+          </button>
+        </div>
 
         <!-- Task list -->
         <ul id="task-list" class="flex flex-col gap-2 mb-4 min-h-[40px]">

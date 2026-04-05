@@ -13,17 +13,46 @@ STATIC_DIR = SRC_DIR / "static"
 # ── Tasks ──────────────────────────────────────────────────────────────────
 
 async def load_tasks(user_id: str) -> List[dict]:
-    """Load all tasks for a user, ordered by position."""
+    """Load all tasks for a user, ordered by position.
+
+    Args:
+        user_id: The ID of the user.
+
+    Returns:
+        A flat list of task dicts with id, text, checked, parent_id, and details.
+    """
     pool = get_db()
     rows = await pool.fetch(
-        "SELECT id, text, checked, position FROM tasks WHERE user_id = $1 ORDER BY position",
+        "SELECT id, text, checked, position, parent_id, details FROM tasks WHERE user_id = $1 ORDER BY position",
         user_id,
     )
-    return [{"id": r["id"], "text": r["text"], "checked": r["checked"]} for r in rows]
+    return [
+        {
+            "id": r["id"],
+            "text": r["text"],
+            "checked": r["checked"],
+            "parent_id": r["parent_id"],
+            "details": r["details"],
+        }
+        for r in rows
+    ]
 
 
-async def save_task(user_id: str, task_id: str, text: str) -> dict:
-    """Create a new task and return it."""
+async def save_task(
+    user_id: str, task_id: str, text: str, parent_id: str | None = None, details: str = ""
+) -> dict:
+    """Create a new task and return it.
+
+    Args:
+        user_id: The ID of the user.
+        task_id: The UUID for the new task.
+        text: The task text.
+        parent_id: Optional parent task ID (makes this a subtask).
+        details: Optional in-depth details for the task.
+
+    Returns:
+        A dict with the created task fields.
+    """
     pool = get_db()
     row = await pool.fetchrow(
         "SELECT COALESCE(MAX(position), -1) + 1 AS next_pos FROM tasks WHERE user_id = $1",
@@ -32,22 +61,57 @@ async def save_task(user_id: str, task_id: str, text: str) -> dict:
     position = row["next_pos"]
 
     await pool.execute(
-        "INSERT INTO tasks (id, user_id, text, checked, position) VALUES ($1, $2, $3, FALSE, $4)",
-        task_id, user_id, text, position,
+        "INSERT INTO tasks (id, user_id, text, checked, position, parent_id, details) VALUES ($1, $2, $3, FALSE, $4, $5, $6)",
+        task_id, user_id, text, position, parent_id, details,
     )
-    return {"id": task_id, "text": text, "checked": False}
+    return {"id": task_id, "text": text, "checked": False, "parent_id": parent_id, "details": details}
 
 
-async def update_task(task_id: str, user_id: str, checked: bool) -> dict | None:
-    """Toggle a task's checked state and return the updated task."""
+async def update_task(
+    task_id: str, user_id: str, checked: bool | None = None, details: str | None = None
+) -> dict | None:
+    """Update a task's checked state and/or details.
+
+    Args:
+        task_id: The ID of the task.
+        user_id: The ID of the user.
+        checked: New checked state, or None to leave unchanged.
+        details: New details text, or None to leave unchanged.
+
+    Returns:
+        The updated task dict, or None if not found.
+    """
     pool = get_db()
-    row = await pool.fetchrow(
-        "UPDATE tasks SET checked = $1 WHERE id = $2 AND user_id = $3 RETURNING id, text, checked",
-        checked, task_id, user_id,
-    )
+    sets = []
+    params = []
+    idx = 1
+
+    if checked is not None:
+        sets.append(f"checked = ${idx}")
+        params.append(checked)
+        idx += 1
+    if details is not None:
+        sets.append(f"details = ${idx}")
+        params.append(details)
+        idx += 1
+
+    if not sets:
+        return None
+
+    params.append(task_id)
+    params.append(user_id)
+
+    query = f"UPDATE tasks SET {', '.join(sets)} WHERE id = ${idx} AND user_id = ${idx + 1} RETURNING id, text, checked, parent_id, details"
+    row = await pool.fetchrow(query, *params)
     if not row:
         return None
-    return {"id": row["id"], "text": row["text"], "checked": row["checked"]}
+    return {
+        "id": row["id"],
+        "text": row["text"],
+        "checked": row["checked"],
+        "parent_id": row["parent_id"],
+        "details": row["details"],
+    }
 
 
 async def delete_task(task_id: str, user_id: str) -> bool:
