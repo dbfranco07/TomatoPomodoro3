@@ -1,13 +1,16 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 
 class TaskCreate(BaseModel):
     text: str
+    parent_id: Optional[str] = None
+    details: str = ""
 
 
 class TaskUpdate(BaseModel):
-    checked: bool
+    checked: Optional[bool] = None
+    details: Optional[str] = None
 
 
 class TaskReorder(BaseModel):
