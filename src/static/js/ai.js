@@ -5,10 +5,10 @@ function setAction(action) {
   currentAction = action;
   document.querySelectorAll('.action-btn').forEach(btn => {
     btn.classList.remove('bg-red-500', 'text-white');
-    btn.classList.add('bg-stone-100', 'text-stone-600');
+    btn.classList.add('bg-stone-100', 'dark:bg-stone-700', 'text-stone-600', 'dark:text-stone-300');
   });
   const active = document.getElementById(`btn-action-${action}`);
-  active.classList.remove('bg-stone-100', 'text-stone-600');
+  active.classList.remove('bg-stone-100', 'dark:bg-stone-700', 'text-stone-600', 'dark:text-stone-300');
   active.classList.add('bg-red-500', 'text-white');
   document.getElementById('custom-prompt-wrap').classList.toggle('hidden', action !== 'custom');
 }

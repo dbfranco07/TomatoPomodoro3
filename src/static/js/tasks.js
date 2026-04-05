@@ -16,11 +16,11 @@ function renderTasks(tasks) {
 function buildTaskEl(task) {
   const li = document.createElement('li');
   li.dataset.id = task.id;
-  li.className = 'task-item flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 select-none';
+  li.className = 'task-item flex items-center gap-2 bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded-lg px-3 py-2 select-none';
 
   // Drag handle
   const handle = document.createElement('span');
-  handle.className = 'text-stone-300 cursor-grab text-lg leading-none pr-1';
+  handle.className = 'text-stone-300 dark:text-stone-500 cursor-grab text-lg leading-none pr-1';
   handle.innerHTML = '&#x2261;';
   li.appendChild(handle);
 
@@ -35,7 +35,7 @@ function buildTaskEl(task) {
   // Text
   const textSpan = document.createElement('span');
   textSpan.textContent = task.text;
-  textSpan.className = 'flex-1 text-stone-700 text-sm' + (task.checked ? ' line-through text-stone-400' : '');
+  textSpan.className = 'flex-1 text-stone-700 dark:text-stone-200 text-sm' + (task.checked ? ' line-through !text-stone-400' : '');
   li.appendChild(textSpan);
 
   // Delete button with inline confirmation
@@ -77,11 +77,11 @@ async function toggleTask(id, checked, textSpan) {
     body: JSON.stringify({ checked })
   });
   if (checked) {
-    textSpan.classList.add('line-through', 'text-stone-400');
-    textSpan.classList.remove('text-stone-700');
+    textSpan.classList.add('line-through', '!text-stone-400');
+    textSpan.classList.remove('text-stone-700', 'dark:text-stone-200');
   } else {
-    textSpan.classList.remove('line-through', 'text-stone-400');
-    textSpan.classList.add('text-stone-700');
+    textSpan.classList.remove('line-through', '!text-stone-400');
+    textSpan.classList.add('text-stone-700', 'dark:text-stone-200');
   }
 }
 

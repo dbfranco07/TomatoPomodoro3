@@ -36,7 +36,7 @@ function renderNotesList() {
     item.className = `cursor-pointer px-3 py-2 rounded-lg text-sm truncate whitespace-nowrap flex-shrink-0 transition ${
       isActive
         ? 'bg-red-500 text-white font-semibold'
-        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+        : 'bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-600'
     }`;
     item.textContent = note.title;
     item.title = note.title;
