@@ -1,3 +1,5 @@
+"""Authentication endpoints: register, login, logout, and current user."""
+
 import uuid
 from datetime import datetime, timezone
 
@@ -18,7 +20,18 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 COOKIE_MAX_AGE = 30 * 24 * 3600  # 30 days
 
 
-def _set_session_cookie(response: JSONResponse, token: str) -> JSONResponse:
+def _set_session_cookie(
+    response: JSONResponse, token: str
+) -> JSONResponse:
+    """Attach an httponly session cookie to a JSON response.
+
+    Args:
+        response: The JSONResponse to modify.
+        token: The session token value to store in the cookie.
+
+    Returns:
+        The same response object with the cookie attached.
+    """
     response.set_cookie(
         key="session",
         value=token,
@@ -30,15 +43,33 @@ def _set_session_cookie(response: JSONResponse, token: str) -> JSONResponse:
 
 
 @router.post("/register")
-async def register(body: UserCreate):
+async def register(body: UserCreate) -> JSONResponse:
+    """Register a new user and start a session.
+
+    Args:
+        body: Username and password for the new account.
+
+    Returns:
+        A JSON response with the new user's data and a session cookie.
+
+    Raises:
+        HTTPException: 400 if username or password is empty.
+        HTTPException: 409 if the username is already taken.
+    """
     pool = get_db()
     username = body.username.strip()
     if not username or not body.password:
-        raise HTTPException(status_code=400, detail="Username and password required")
+        raise HTTPException(
+            status_code=400, detail="Username and password required"
+        )
 
-    existing = await pool.fetchrow("SELECT id FROM users WHERE username = $1", username)
+    existing = await pool.fetchrow(
+        "SELECT id FROM users WHERE username = $1", username
+    )
     if existing:
-        raise HTTPException(status_code=409, detail="Username already taken")
+        raise HTTPException(
+            status_code=409, detail="Username already taken"
+        )
 
     user_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
@@ -49,11 +80,14 @@ async def register(body: UserCreate):
     async with pool.acquire() as conn:
         async with conn.transaction():
             await conn.execute(
-                "INSERT INTO users (id, username, password_hash, created_at) VALUES ($1, $2, $3, $4)",
+                "INSERT INTO users "
+                "(id, username, password_hash, created_at) "
+                "VALUES ($1, $2, $3, $4)",
                 user_id, username, pw_hash, now,
             )
             await conn.execute(
-                "INSERT INTO sessions (token, user_id, created_at) VALUES ($1, $2, $3)",
+                "INSERT INTO sessions (token, user_id, created_at) "
+                "VALUES ($1, $2, $3)",
                 token, user_id, now,
             )
 
@@ -63,19 +97,34 @@ async def register(body: UserCreate):
 
 
 @router.post("/login")
-async def login(body: UserLogin):
+async def login(body: UserLogin) -> JSONResponse:
+    """Authenticate a user and start a session.
+
+    Args:
+        body: Username and password credentials.
+
+    Returns:
+        A JSON response with the user's data and a session cookie.
+
+    Raises:
+        HTTPException: 401 if the username or password is incorrect.
+    """
     pool = get_db()
     row = await pool.fetchrow(
-        "SELECT id, username, password_hash FROM users WHERE username = $1",
+        "SELECT id, username, password_hash FROM users "
+        "WHERE username = $1",
         body.username.strip(),
     )
     if not row or not verify_password(body.password, row["password_hash"]):
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+        raise HTTPException(
+            status_code=401, detail="Invalid username or password"
+        )
 
     token = create_session_token()
     now = datetime.now(timezone.utc).isoformat()
     await pool.execute(
-        "INSERT INTO sessions (token, user_id, created_at) VALUES ($1, $2, $3)",
+        "INSERT INTO sessions (token, user_id, created_at) "
+        "VALUES ($1, $2, $3)",
         token, row["id"], now,
     )
 
@@ -85,9 +134,21 @@ async def login(body: UserLogin):
 
 
 @router.post("/logout")
-async def logout(user=Depends(get_current_user)):
+async def logout(
+    user: dict = Depends(get_current_user),
+) -> JSONResponse:
+    """Log out the current user by deleting all their sessions.
+
+    Args:
+        user: The authenticated user dict from the session.
+
+    Returns:
+        A JSON response confirming the logout.
+    """
     pool = get_db()
-    await pool.execute("DELETE FROM sessions WHERE user_id = $1", user["id"])
+    await pool.execute(
+        "DELETE FROM sessions WHERE user_id = $1", user["id"]
+    )
 
     response = JSONResponse(content={"ok": True})
     response.delete_cookie("session")
@@ -95,5 +156,15 @@ async def logout(user=Depends(get_current_user)):
 
 
 @router.get("/me")
-async def me(user=Depends(get_current_user)):
+async def me(
+    user: dict = Depends(get_current_user),
+) -> UserOut:
+    """Return the currently authenticated user's profile.
+
+    Args:
+        user: The authenticated user dict from the session.
+
+    Returns:
+        The current user's public profile.
+    """
     return UserOut(id=user["id"], username=user["username"])

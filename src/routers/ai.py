@@ -1,26 +1,61 @@
+"""AI text-generation endpoint supporting Anthropic and
+OpenAI-compatible APIs.
+"""
+
 import anthropic
 import openai
 from fastapi import APIRouter, HTTPException
+
 from schemas import AIRequest
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 SYSTEM_PROMPTS = {
-    "summarize": "Summarize the following notes or bullet points concisely. Output only the summary.",
-    "cleanup":   "Clean up and rewrite the following text. Fix grammar, improve clarity, preserve meaning. Output only the rewritten text.",
-    "expand":    "Expand the following rough idea or bullet points into a more complete, coherent thought. Output only the expanded text.",
+    "summarize": (
+        "Summarize the following notes or bullet points concisely. "
+        "Output only the summary."
+    ),
+    "cleanup": (
+        "Clean up and rewrite the following text. Fix grammar, improve "
+        "clarity, preserve meaning. Output only the rewritten text."
+    ),
+    "expand": (
+        "Expand the following rough idea or bullet points into a more "
+        "complete, coherent thought. Output only the expanded text."
+    ),
 }
 
 
 @router.post("/generate")
-def ai_generate(body: AIRequest):
+def ai_generate(body: AIRequest) -> dict:
+    """Generate AI text using the specified provider and action.
+
+    Args:
+        body: Request payload including provider, model, key,
+            and content.
+
+    Returns:
+        A dict with a single ``result`` key containing the generated
+        text.
+
+    Raises:
+        HTTPException: 400 if content is empty or action is
+            unrecognized.
+        HTTPException: 502 if the upstream AI provider call fails.
+    """
     user_msg = body.content.strip()
     if not user_msg:
         raise HTTPException(status_code=400, detail="Content is empty")
 
-    system = body.custom_prompt.strip() if body.action == "custom" else SYSTEM_PROMPTS.get(body.action, "")
+    system = (
+        body.custom_prompt.strip()
+        if body.action == "custom"
+        else SYSTEM_PROMPTS.get(body.action, "")
+    )
     if not system:
-        raise HTTPException(status_code=400, detail=f"Unknown action: {body.action}")
+        raise HTTPException(
+            status_code=400, detail=f"Unknown action: {body.action}"
+        )
 
     try:
         if body.provider == "anthropic":
