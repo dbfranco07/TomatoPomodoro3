@@ -8,6 +8,8 @@ let isRunning = false;
 let isPaused = false;
 let sessionNo = 0;
 let timerInterval = null;
+let phaseStartTime = null;
+let phaseStartTimeLeft = 0;
 
 const sound = document.getElementById('notif-sound');
 const timerDisplay = document.getElementById('timer-display');
@@ -85,6 +87,8 @@ function startSession() {
   totalPhaseTime = workSec;
   isRunning = true;
   isPaused = false;
+  phaseStartTime = Date.now();
+  phaseStartTimeLeft = timeLeft;
 
   btnStart.classList.add('hidden');
   btnPause.classList.remove('hidden');
@@ -107,6 +111,8 @@ function stopSession() {
   sessionNo = 0;
   timeLeft = 0;
   totalPhaseTime = 0;
+  phaseStartTime = null;
+  phaseStartTimeLeft = 0;
 
   btnStart.classList.remove('hidden');
   btnPause.classList.add('hidden');
@@ -128,6 +134,8 @@ function togglePause() {
   if (isPaused) {
     isPaused = false;
     btnPause.textContent = 'Pause';
+    phaseStartTime = Date.now();
+    phaseStartTimeLeft = timeLeft;
     timerInterval = setInterval(tick, 1000);
 
     if (isWork) {
@@ -142,6 +150,7 @@ function togglePause() {
     btnPause.textContent = 'Resume';
     clearInterval(timerInterval);
     timerInterval = null;
+    phaseStartTime = null;
 
     setStatusBadge('Paused', 'bg-amber-100 text-amber-600');
     setTimerPanelState('paused');
@@ -150,7 +159,8 @@ function togglePause() {
 
 function tick() {
   if (!isRunning || isPaused) return;
-  timeLeft--;
+  timeLeft = phaseStartTimeLeft - Math.floor((Date.now() - phaseStartTime) / 1000);
+  if (timeLeft < 0) timeLeft = 0;
   updateDisplay();
   updateProgressRing();
   updateUrgentPulse();
@@ -202,5 +212,7 @@ function dismissModal() {
   updateDisplay();
   updateProgressRing();
   isRunning = true;
+  phaseStartTime = Date.now();
+  phaseStartTimeLeft = timeLeft;
   timerInterval = setInterval(tick, 1000);
 }
