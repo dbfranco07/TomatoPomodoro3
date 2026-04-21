@@ -13,4 +13,5 @@ function initApp() {
   fetchNotesList();
   loadAISettings();
   initPip();
+  initMusic();
 }
