@@ -177,7 +177,7 @@
         <p id="timer-error" class="text-red-500 text-sm h-5"></p>
 
         <!-- Controls -->
-        <div class="flex gap-3">
+        <div class="flex gap-3 flex-wrap justify-center">
           <button id="btn-start" onclick="startSession()"
             class="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-semibold px-6 py-2.5 rounded-lg transition">
             Start Session
@@ -189,6 +189,11 @@
           <button id="btn-stop" onclick="stopSession()"
             class="bg-stone-200 dark:bg-stone-600 hover:bg-stone-300 dark:hover:bg-stone-500 active:bg-stone-400 text-stone-700 dark:text-stone-200 font-semibold px-5 py-2.5 rounded-lg transition">
             Stop
+          </button>
+          <button id="btn-pip" onclick="togglePip()" title="Open timer in a floating window"
+            class="bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 dark:hover:bg-stone-600
+                   text-stone-600 dark:text-stone-300 font-semibold px-5 py-2.5 rounded-lg transition text-sm">
+            PiP
           </button>
         </div>
       </div>
@@ -387,6 +392,7 @@
       </div><!-- /panel-body-ai -->
     </div>
 
+
   </div><!-- /app-section -->
 
   <!-- Phase-end modal -->
@@ -454,6 +460,7 @@
   <script src="/static/js/tasks.js"></script>
   <script src="/static/js/notes.js"></script>
   <script src="/static/js/ai.js"></script>
+  <script src="/static/js/pip.js"></script>
   <script src="/static/js/app.js"></script>
 </body>
 </html>
